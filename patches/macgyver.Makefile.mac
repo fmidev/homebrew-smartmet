@@ -1,0 +1,124 @@
+# Portable Makefile for building smartmet-library-macgyver on macOS
+#
+# Required dependencies (install via brew):
+#   brew install boost fmt howard-hinnant-date double-conversion
+#
+# Optional dependencies:
+#   - libpqxx     : PostgreSQL support (set WITH_POSTGRES=1)
+#   - libcurl     : Remote IANA tzdata fetching (set USE_OS_TZDB=0; default uses OS tzdb)
+#   - icu, ctpp2  : NOT needed; ICU is unused in source, ctpp2 is for TemplateFormatter (excluded)
+#
+# Usage:
+#   make -f Makefile.mac                      # build static + dynamic libs
+#   make -f Makefile.mac WITH_POSTGRES=1      # include PostgreSQLConnection
+#   make -f Makefile.mac install PREFIX=...   # install (defaults to /usr/local)
+
+SUBNAME = macgyver
+LIB     = smartmet-$(SUBNAME)
+
+PREFIX     ?= /usr/local
+BREW_PREFIX ?= $(shell brew --prefix)
+
+# ---- Feature toggles --------------------------------------------------------
+WITH_POSTGRES ?= 0
+USE_OS_TZDB   ?= 1
+
+# ---- Compiler ---------------------------------------------------------------
+CXX      ?= clang++
+CXXSTD   ?= -std=c++17
+OPT      ?= -O2
+WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations
+CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC
+DEFINES   = -DUNIX -D_REENTRANT -DPQXX_HIDE_EXP_OPTIONAL -DUSE_OS_TZDB=$(USE_OS_TZDB)
+
+# ---- Brew dependency paths --------------------------------------------------
+BOOST_PREFIX  := $(shell brew --prefix boost)
+FMT_PREFIX    := $(shell brew --prefix fmt)
+DATE_PREFIX   := $(shell brew --prefix howard-hinnant-date)
+DC_PREFIX     := $(shell brew --prefix double-conversion)
+
+INCLUDES := -Iinclude -I. -Imacgyver \
+            -I$(BOOST_PREFIX)/include \
+            -I$(FMT_PREFIX)/include \
+            -I$(DATE_PREFIX)/include \
+            -I$(DC_PREFIX)/include
+
+LIBDIRS  := -L$(BOOST_PREFIX)/lib \
+            -L$(FMT_PREFIX)/lib \
+            -L$(DATE_PREFIX)/lib \
+            -L$(DC_PREFIX)/lib
+
+LIBS     := -lboost_thread -lboost_chrono -lboost_iostreams \
+            -lboost_regex -lboost_serialization -lboost_filesystem \
+            -lfmt -ldate-tz -ldouble-conversion -liconv -lpthread
+
+# ---- Optional: PostgreSQL ---------------------------------------------------
+ifeq ($(WITH_POSTGRES),1)
+    PQXX_PREFIX := $(shell brew --prefix libpqxx)
+    PQ_PREFIX   := $(shell brew --prefix libpq)
+    INCLUDES += -I$(PQXX_PREFIX)/include -I$(PQ_PREFIX)/include
+    LIBDIRS  += -L$(PQXX_PREFIX)/lib -L$(PQ_PREFIX)/lib
+    LIBS     += -lpqxx -lpq
+endif
+
+# ---- Optional: curl for IANA tzdata download --------------------------------
+ifeq ($(USE_OS_TZDB),0)
+    LIBS += -lcurl
+endif
+
+# ---- Sources ----------------------------------------------------------------
+SRC_DIRS = macgyver macgyver/date_time
+
+# Files to exclude:
+#   - TemplateFormatter*, TemplateDirectory*: require ctpp2 (not on macOS)
+#   - TemplateFactory.cpp: pulls in TemplateFormatter.h
+EXCLUDED_SRCS = \
+    macgyver/TemplateFormatter.cpp \
+    macgyver/TemplateFormatterMT.cpp \
+    macgyver/TemplateDirectory.cpp \
+    macgyver/TemplateFactory.cpp
+
+ifneq ($(WITH_POSTGRES),1)
+EXCLUDED_SRCS += \
+    macgyver/PostgreSQLConnection.cpp \
+    macgyver/PostgreSQLConnectionImpl.cpp
+endif
+
+ALL_SRCS := $(foreach d,$(SRC_DIRS),$(wildcard $(d)/*.cpp))
+SRCS     := $(filter-out $(EXCLUDED_SRCS),$(ALL_SRCS))
+OBJS     := $(patsubst %.cpp,obj/%.o,$(SRCS))
+
+# ---- Library output ---------------------------------------------------------
+DYLIB := lib$(LIB).dylib
+ALIB  := lib$(LIB).a
+
+.PHONY: all clean install
+
+all: $(ALIB) $(DYLIB)
+
+obj/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(ALIB): $(OBJS)
+	$(AR) rcs $@ $(OBJS)
+
+$(DYLIB): $(OBJS)
+	$(CXX) -dynamiclib -install_name @rpath/$(DYLIB) \
+	    $(LIBDIRS) -o $@ $(OBJS) $(LIBS)
+
+install: all
+	@mkdir -p $(PREFIX)/lib $(PREFIX)/include/smartmet/$(SUBNAME)/date_time
+	cp $(ALIB) $(DYLIB) $(PREFIX)/lib/
+	# Public headers
+	@for d in $(SRC_DIRS); do \
+	    rel=$${d#macgyver/}; rel=$${rel#macgyver}; \
+	    dest=$(PREFIX)/include/smartmet/$(SUBNAME)$${rel:+/$$rel}; \
+	    mkdir -p $$dest; \
+	    for h in $$d/*.h; do [ -f $$h ] && cp $$h $$dest/; done; \
+	done
+
+clean:
+	rm -rf obj $(ALIB) $(DYLIB)
+
+-include $(OBJS:.o=.d)

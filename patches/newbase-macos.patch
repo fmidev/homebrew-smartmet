@@ -1,0 +1,44 @@
+diff --git a/newbase/NFmiNearTree.h b/newbase/NFmiNearTree.h
+index 96b5063..14ce91c 100644
+--- a/newbase/NFmiNearTree.h
++++ b/newbase/NFmiNearTree.h
+@@ -103,6 +103,7 @@
+ #include "NFmiNearTreeImpl.h"
+ #include <algorithm>
+ #include <cmath>
++#include <random>
+ #include <vector>
+ 
+ // An utility functor to generate default 2D distance calculator
+@@ -315,7 +316,12 @@ void NFmiNearTree<T, F>::Flush() const
+ {
+   if (!itsInputBuffer.empty())
+   {
+-    std::random_shuffle(itsInputBuffer.begin(), itsInputBuffer.end());
++    // std::random_shuffle was removed in C++17 — use std::shuffle (works everywhere).
++    {
++      std::random_device rd;
++      std::mt19937 gen(rd());
++      std::shuffle(itsInputBuffer.begin(), itsInputBuffer.end(), gen);
++    }
+ 
+     for (typename buffer_type::const_iterator it = itsInputBuffer.begin();
+          it != itsInputBuffer.end();
+diff --git a/newbase/NFmiRotatedLatLonArea.cpp b/newbase/NFmiRotatedLatLonArea.cpp
+index 58ae39e..e624966 100644
+--- a/newbase/NFmiRotatedLatLonArea.cpp
++++ b/newbase/NFmiRotatedLatLonArea.cpp
+@@ -17,6 +17,13 @@
+ #include <fmt/format.h>
+ #include <macgyver/Exception.h>
+ #include <algorithm>
++#include <cmath>
++
++// GNU libm provides sincos(). On platforms without it (e.g. macOS) fall back to
++// sin/cos. Modern compilers fold these into a single sincos call when available.
++#if !defined(__GLIBC__) && !defined(_GNU_SOURCE)
++static inline void sincos(double x, double* s, double* c) { *s = std::sin(x); *c = std::cos(x); }
++#endif
+ 
+ using namespace std;
+ 

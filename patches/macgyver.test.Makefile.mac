@@ -1,0 +1,86 @@
+# Build & run macgyver regression tests on macOS.
+#
+# Run from the test/ directory:   make -f Makefile.mac test
+
+LIB_DIR     := ..
+MACGYVER_DIR := ..
+GIS_DIR      := ../../smartmet-library-gis
+REGR_DIR     := ../../smartmet-library-regression
+
+BOOST_PREFIX  := $(shell brew --prefix boost)
+FMT_PREFIX    := $(shell brew --prefix fmt)
+DC_PREFIX     := $(shell brew --prefix double-conversion)
+DATE_PREFIX   := $(shell brew --prefix howard-hinnant-date)
+
+CXX      ?= clang++
+CXXFLAGS ?= -std=c++17 -O0 -g -Wall -Wno-unused-parameter -Wno-deprecated-declarations
+DEFINES   = -DUNIX -D_REENTRANT -DUSE_OS_TZDB=1
+
+INCLUDES := -I$(MACGYVER_DIR)/macgyver -I$(MACGYVER_DIR) -I$(REGR_DIR) -I$(GIS_DIR) \
+            -I$(BOOST_PREFIX)/include \
+            -I$(FMT_PREFIX)/include \
+            -I$(DC_PREFIX)/include \
+            -I$(DATE_PREFIX)/include
+
+LIBDIRS  := -L$(LIB_DIR) \
+            -L$(BOOST_PREFIX)/lib \
+            -L$(FMT_PREFIX)/lib \
+            -L$(DC_PREFIX)/lib \
+            -L$(DATE_PREFIX)/lib
+
+# rpath so test binaries find the dylib in the build dir
+RPATH := -Wl,-rpath,$(realpath $(LIB_DIR))
+
+LIBS := -lsmartmet-macgyver \
+        -lboost_regex -lboost_iostreams -lboost_thread -lboost_chrono \
+        -lboost_serialization -lboost_filesystem \
+        -lfmt -ldate-tz -ldouble-conversion -liconv -lpthread
+
+# Tests that need extra libs (matches upstream)
+EXTRA_LIBS_DateTest          := -lboost_date_time
+EXTRA_LIBS_LocalDateTimeTest := -lboost_date_time
+EXTRA_LIBS_TimeDurationTest  := -lboost_date_time
+EXTRA_LIBS_CacheTest         := -lboost_filesystem
+
+# Skip tests that need things not in Homebrew or external services
+SKIP_TESTS := \
+    PostgreSQLConnectionTest \
+    PostgreSQLConnectionOptionsTest \
+    TemplateFormatterTest \
+    TemplateDirectoryTest \
+    TemplateFormatterMTTest \
+    LRUCacheTest \
+    NumericCastTest
+
+ALL_TESTS := $(patsubst %.cpp,%,$(wildcard *Test.cpp))
+TESTS     := $(filter-out $(SKIP_TESTS),$(ALL_TESTS))
+
+.PHONY: all test clean
+
+all: $(TESTS)
+
+obj/%.o: %.cpp
+	@mkdir -p obj
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c $< -o $@
+
+# Link rule (with optional per-test extra libs)
+$(TESTS): %: obj/%.o
+	$(CXX) $(CXXFLAGS) $(LIBDIRS) $(RPATH) -o $@ $< $(LIBS) $(EXTRA_LIBS_$@)
+
+test: $(TESTS)
+	@echo "=== Running $(words $(TESTS)) macgyver tests ==="
+	@pass=0; fail=0; failed=""; \
+	for t in $(TESTS); do \
+	  if ./$$t > /dev/null 2>&1; then \
+	    pass=$$((pass+1)); \
+	  else \
+	    fail=$$((fail+1)); failed="$$failed $$t"; \
+	  fi; \
+	done; \
+	echo "PASS: $$pass  FAIL: $$fail"; \
+	if [ $$fail -gt 0 ]; then echo "Failed:$$failed"; fi
+
+clean:
+	rm -rf obj $(ALL_TESTS) *.err
+
+-include $(wildcard obj/*.d)

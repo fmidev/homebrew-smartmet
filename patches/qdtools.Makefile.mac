@@ -1,0 +1,220 @@
+# Portable Makefile for building smartmet-qdtools on macOS
+#
+# Required brew packages:
+#   brew install boost fmt gdal libpng jpeg-turbo bzip2 hdf5 eccodes \
+#                netcdf netcdf-cxx howard-hinnant-date double-conversion
+#
+# Optional (off by default — these libs are not in Homebrew):
+#   ecbufr/libbufr — needed by bufrtoqd, radartoqd
+#   metar           — needed by metar2qd
+#
+# Toggles:
+#   WITH_BUFR=1     enable bufrtoqd, radartoqd (requires ecbufr/bufr installed manually)
+#   WITH_METAR=1    enable metar2qd (requires libmetar installed manually)
+#   WITH_NETCDF=0   disable nc2qd, nctoqd, laps2qd, wrftoqd
+#   WITH_ECCODES=0  disable grib2tojpg, grib2toqd, gribtoqd, qdtogrib
+#   WITH_HDF5=0     disable h5toqd
+#
+# Depends on built sibling smartmet libraries (set DIRs if not in default location):
+#   ../smartmet-library-macgyver
+#   ../smartmet-library-gis
+#   ../smartmet-library-newbase
+#   ../smartmet-library-imagine
+#   ../smartmet-library-calculator
+#   ../smartmet-library-smarttools
+
+PREFIX     ?= /usr/local
+
+MACGYVER_DIR    ?= $(CURDIR)/../smartmet-library-macgyver
+GIS_DIR         ?= $(CURDIR)/../smartmet-library-gis
+NEWBASE_DIR     ?= $(CURDIR)/../smartmet-library-newbase
+IMAGINE_DIR     ?= $(CURDIR)/../smartmet-library-imagine
+CALCULATOR_DIR  ?= $(CURDIR)/../smartmet-library-calculator
+SMARTTOOLS_DIR  ?= $(CURDIR)/../smartmet-library-smarttools
+MACGYVER_INC    ?= $(MACGYVER_DIR)
+MACGYVER_LIB    ?= $(MACGYVER_DIR)
+GIS_INC         ?= $(GIS_DIR)
+GIS_LIB         ?= $(GIS_DIR)
+NEWBASE_INC     ?= $(NEWBASE_DIR)
+NEWBASE_LIB     ?= $(NEWBASE_DIR)
+IMAGINE_INC     ?= $(IMAGINE_DIR)
+IMAGINE_LIB     ?= $(IMAGINE_DIR)
+CALCULATOR_INC  ?= $(CALCULATOR_DIR)
+CALCULATOR_LIB  ?= $(CALCULATOR_DIR)
+SMARTTOOLS_INC  ?= $(SMARTTOOLS_DIR)
+SMARTTOOLS_LIB  ?= $(SMARTTOOLS_DIR)
+
+# ---- Feature toggles --------------------------------------------------------
+WITH_BUFR    ?= 0
+WITH_METAR   ?= 0
+WITH_NETCDF  ?= 1
+WITH_ECCODES ?= 1
+WITH_HDF5    ?= 1
+
+# ---- Compiler ---------------------------------------------------------------
+CXX      ?= clang++
+CXXSTD   ?= -std=c++17
+OPT      ?= -O2
+WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations
+CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC -fpermissive
+DEFINES   = -DUNIX
+
+# ---- Brew dependency paths --------------------------------------------------
+BOOST_PREFIX    := $(shell brew --prefix boost)
+FMT_PREFIX      := $(shell brew --prefix fmt)
+GDAL_PREFIX     := $(shell brew --prefix gdal)
+DC_PREFIX       := $(shell brew --prefix double-conversion)
+DATE_PREFIX     := $(shell brew --prefix howard-hinnant-date)
+PNG_PREFIX      := $(shell brew --prefix libpng)
+JPEG_PREFIX     := $(shell brew --prefix jpeg-turbo)
+BZIP2_PREFIX    := $(shell brew --prefix bzip2)
+ZLIB_PREFIX     := /usr  # libz is in macOS SDK
+ECCODES_PREFIX  := $(shell brew --prefix eccodes 2>/dev/null)
+NETCDF_PREFIX   := $(shell brew --prefix netcdf 2>/dev/null)
+NETCDFCXX_PREFIX:= $(shell brew --prefix netcdf-cxx 2>/dev/null)
+HDF5_PREFIX     := $(shell brew --prefix hdf5 2>/dev/null)
+
+INCLUDES := -Iinclude -I. \
+            -I$(MACGYVER_INC) -I$(GIS_INC) -I$(NEWBASE_INC) \
+            -I$(IMAGINE_INC) -I$(CALCULATOR_INC) -I$(SMARTTOOLS_INC) \
+            -I$(BOOST_PREFIX)/include \
+            -I$(FMT_PREFIX)/include \
+            -I$(GDAL_PREFIX)/include \
+            -I$(DC_PREFIX)/include \
+            -I$(DATE_PREFIX)/include \
+            -I$(PNG_PREFIX)/include \
+            -I$(JPEG_PREFIX)/include \
+            -I$(BZIP2_PREFIX)/include
+
+LIBDIRS  := -L$(MACGYVER_LIB) -L$(GIS_LIB) -L$(NEWBASE_LIB) \
+            -L$(IMAGINE_LIB) -L$(CALCULATOR_LIB) -L$(SMARTTOOLS_LIB) \
+            -L$(BOOST_PREFIX)/lib \
+            -L$(FMT_PREFIX)/lib \
+            -L$(GDAL_PREFIX)/lib \
+            -L$(DC_PREFIX)/lib \
+            -L$(DATE_PREFIX)/lib \
+            -L$(PNG_PREFIX)/lib \
+            -L$(JPEG_PREFIX)/lib \
+            -L$(BZIP2_PREFIX)/lib
+
+# Smartmet libs first; rpath embeds the build-tree locations so binaries
+# can run from the build dir without `make install`.
+RPATH := -Wl,-rpath,$(MACGYVER_DIR) \
+         -Wl,-rpath,$(GIS_DIR) \
+         -Wl,-rpath,$(NEWBASE_DIR) \
+         -Wl,-rpath,$(IMAGINE_DIR) \
+         -Wl,-rpath,$(CALCULATOR_DIR) \
+         -Wl,-rpath,$(SMARTTOOLS_DIR)
+
+SMARTMET_LIBS := -lsmartmet-calculator -lsmartmet-smarttools \
+                 -lsmartmet-newbase -lsmartmet-imagine \
+                 -lsmartmet-gis -lsmartmet-macgyver
+
+BASE_LIBS := -lboost_regex -lboost_program_options -lboost_iostreams \
+             -lboost_thread -lboost_chrono -lboost_serialization \
+             -lboost_filesystem \
+             -lfmt -lgdal -ldouble-conversion -ldate-tz \
+             -lbz2 -ljpeg -lpng -lz -liconv -lpthread
+
+# ---- Optional features ------------------------------------------------------
+ifeq ($(WITH_HDF5),1)
+    INCLUDES += -I$(HDF5_PREFIX)/include
+    LIBDIRS  += -L$(HDF5_PREFIX)/lib
+    BASE_LIBS += -lhdf5
+endif
+
+ifeq ($(WITH_ECCODES),1)
+    INCLUDES += -I$(ECCODES_PREFIX)/include
+    LIBDIRS  += -L$(ECCODES_PREFIX)/lib
+    ECCODES_LIBS := -leccodes
+endif
+
+ifeq ($(WITH_NETCDF),1)
+    INCLUDES += -I$(NETCDF_PREFIX)/include -I$(NETCDFCXX_PREFIX)/include
+    LIBDIRS  += -L$(NETCDF_PREFIX)/lib -L$(NETCDFCXX_PREFIX)/lib
+    NETCDF_LIBS := -lnetcdf-cxx4 -lnetcdf
+endif
+
+LIBS := $(SMARTMET_LIBS) $(BASE_LIBS)
+
+# ---- Source library (libqdtools) -------------------------------------------
+# Selectively exclude shared sources whose feature is disabled.
+ALL_SRC_SRCS := $(wildcard source/*.cpp)
+EXCLUDED_SRC_SRCS :=
+ifneq ($(WITH_NETCDF),1)
+    EXCLUDED_SRC_SRCS += source/nctools.cpp source/NcVarTools.cpp \
+                         source/NcFileExtended.cpp source/FmiNetCdfQueryData.cpp
+endif
+ifneq ($(WITH_ECCODES),1)
+    EXCLUDED_SRC_SRCS += source/GribTools.cpp
+endif
+ifneq ($(WITH_HDF5),1)
+    EXCLUDED_SRC_SRCS += source/Hdf5File.cpp
+endif
+SRC_SRCS := $(filter-out $(EXCLUDED_SRC_SRCS),$(ALL_SRC_SRCS))
+SRC_OBJS := $(patsubst %.cpp,obj/%.o,$(SRC_SRCS))
+
+# ---- Main programs ----------------------------------------------------------
+ALL_MAIN_SRCS := $(wildcard main/*.cpp)
+# qddifference depends on dtl (header-only diff lib, not in Homebrew). Skip.
+EXCLUDED_MAIN_SRCS := main/qddifference.cpp
+ifneq ($(WITH_BUFR),1)
+    EXCLUDED_MAIN_SRCS += main/bufrtoqd.cpp main/radartoqd.cpp
+endif
+ifneq ($(WITH_METAR),1)
+    EXCLUDED_MAIN_SRCS += main/metar2qd.cpp
+endif
+ifneq ($(WITH_NETCDF),1)
+    EXCLUDED_MAIN_SRCS += main/laps2qd.cpp main/nc2qd.cpp main/nctoqd.cpp main/wrftoqd.cpp
+endif
+ifneq ($(WITH_ECCODES),1)
+    EXCLUDED_MAIN_SRCS += main/grib2tojpg.cpp main/grib2toqd.cpp main/gribtoqd.cpp main/qdtogrib.cpp
+endif
+ifneq ($(WITH_HDF5),1)
+    EXCLUDED_MAIN_SRCS += main/h5toqd.cpp
+endif
+
+MAIN_SRCS := $(filter-out $(EXCLUDED_MAIN_SRCS),$(ALL_MAIN_SRCS))
+MAIN_PROGS := $(patsubst main/%.cpp,%,$(MAIN_SRCS))
+
+QDTOOLS_LIB := obj/libqdtools.a
+
+.PHONY: all clean install
+
+all: $(MAIN_PROGS)
+
+obj/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(QDTOOLS_LIB): $(SRC_OBJS)
+	@mkdir -p $(dir $@)
+	$(AR) rcs $@ $(SRC_OBJS)
+
+# Per-binary extra libs (matches upstream EXTRA_LIBS rules)
+EXTRA_LIBS_bufrtoqd     := -lecbufr
+EXTRA_LIBS_radartoqd    := -lecbufr -lbufr
+EXTRA_LIBS_metar2qd     := -lmetar
+EXTRA_LIBS_grib2tojpg   := $(ECCODES_LIBS)
+EXTRA_LIBS_grib2toqd    := $(ECCODES_LIBS)
+EXTRA_LIBS_gribtoqd     := $(ECCODES_LIBS)
+EXTRA_LIBS_qdtogrib     := $(ECCODES_LIBS)
+EXTRA_LIBS_laps2qd      := $(NETCDF_LIBS)
+EXTRA_LIBS_nc2qd        := $(NETCDF_LIBS)
+EXTRA_LIBS_nctoqd       := $(NETCDF_LIBS)
+EXTRA_LIBS_wrftoqd      := $(NETCDF_LIBS)
+
+# Generic rule: link main/<name>.cpp -> <name> with libqdtools.a
+$(MAIN_PROGS): %: obj/main/%.o $(QDTOOLS_LIB)
+	$(CXX) $(LDFLAGS) $(LIBDIRS) $(RPATH) -o $@ obj/main/$@.o \
+	    -Lobj -lqdtools $(LIBS) $(EXTRA_LIBS_$@)
+
+clean:
+	rm -rf obj $(MAIN_PROGS)
+
+install: all
+	@mkdir -p $(PREFIX)/bin
+	cp $(MAIN_PROGS) $(PREFIX)/bin/
+
+-include $(SRC_OBJS:.o=.d)
+-include $(patsubst %.cpp,obj/%.d,$(MAIN_SRCS))

@@ -1,0 +1,243 @@
+diff --git a/macgyver/AsyncTask.cpp b/macgyver/AsyncTask.cpp
+index 8f22b71..8462a31 100644
+--- a/macgyver/AsyncTask.cpp
++++ b/macgyver/AsyncTask.cpp
+@@ -125,7 +125,11 @@ void Fmi::AsyncTask::run(std::function<void()> task)
+   {
+     status = active;
+ #ifdef BOOST_THREAD_PLATFORM_PTHREAD
++#if defined(__APPLE__)
++    pthread_setname_np(name.substr(0, 63).c_str());
++#else
+     pthread_setname_np(pthread_self(), name.substr(0, 15).c_str());
++#endif
+ #endif
+     LOG_TIME("started");
+     task();
+diff --git a/macgyver/CharsetConverter.cpp b/macgyver/CharsetConverter.cpp
+index 7d39a23..5d6c9f0 100644
+--- a/macgyver/CharsetConverter.cpp
++++ b/macgyver/CharsetConverter.cpp
+@@ -89,9 +89,17 @@ std::string Fmi::CharsetConverter::convert(const std::string& src) const
+         throw Fmi::Exception(BCP,
+                              "An incomplete multibyte sequence has been encountered in the input");
+       default:
++      {
++        // Reuse s_out — exception is about to throw anyway. POSIX strerror_r
++        // returns int and writes to buffer; GNU returns char*. Handle both.
++#if defined(__APPLE__) || (defined(_POSIX_C_SOURCE) && !defined(_GNU_SOURCE))
++        (void)strerror_r(errno, s_out, sizeof(s_out));
++        throw Fmi::Exception(BCP, std::string("Unexpected error: ") + s_out);
++#else
+         throw Fmi::Exception(BCP, std::string("Unexpected error: ") +
+-            strerror_r(errno, s_out, sizeof(s_out))); // We can reuse the same buffer as
+-                                                      // the exception is thrown anyway
++            strerror_r(errno, s_out, sizeof(s_out)));
++#endif
++      }
+     }
+   }
+   else
+diff --git a/macgyver/MappedFile.cpp b/macgyver/MappedFile.cpp
+index aada5c8..2efd7fc 100644
+--- a/macgyver/MappedFile.cpp
++++ b/macgyver/MappedFile.cpp
+@@ -132,7 +132,12 @@ Fmi::MappedFile::madvise_nodump(boost::intmax_t offset)
+ {
+     if (boost::iostreams::mapped_file::is_open())
+     {
++#ifdef MADV_DONTDUMP
+         invoke_madvise(MADV_DONTDUMP, offset);
++#else
++        // macOS / BSD have no MADV_DONTDUMP equivalent — silently no-op
++        (void)offset;
++#endif
+     }
+ }
+ 
+@@ -163,7 +168,13 @@ Fmi::MappedFile::invoke_madvise(int adv, boost::intmax_t offset)
+         Fmi::Exception exception(BCP, "madvise() failed");
+         exception.addParameter("path", m_path);
+         exception.addParameter("errno", std::to_string(err));
++        // POSIX strerror_r returns int (writes buffer); GNU returns char*. Handle both.
++#if defined(__APPLE__) || (defined(_POSIX_C_SOURCE) && !defined(_GNU_SOURCE))
++        (void)strerror_r(err, tmp, sizeof tmp);
++        exception.addParameter("description", tmp);
++#else
+         exception.addParameter("description", strerror_r(err, tmp, sizeof tmp));
++#endif
+         snprintf(tmp, sizeof(tmp), "%p", (void*)aligned_address);
+         exception.addParameter("address", tmp);
+         exception.addParameter("size", std::to_string(aligned_size));
+diff --git a/macgyver/TimeZoneFactory.cpp b/macgyver/TimeZoneFactory.cpp
+index 12e8af6..b26a301 100644
+--- a/macgyver/TimeZoneFactory.cpp
++++ b/macgyver/TimeZoneFactory.cpp
+@@ -8,9 +8,11 @@
+ #include "Exception.h"
+ #include "StringConversion.h"
+ #include "WorldTimeZones.h"
++#include <cstdlib>
+ #include <iostream>
+ #include <memory>
+ #include <stdexcept>
++#include <string>
+ 
+ using namespace std;
+ 
+@@ -18,6 +20,20 @@ namespace Fmi
+ {
+ static const char* default_coordinates = "/usr/share/smartmet/timezones/timezone.shz";
+ 
++namespace
++{
++// Optional env-var override for the timezone coordinate file. Useful for
++// installs that can't write to /usr/share (macOS SIP, Homebrew, non-root).
++// Falls back to the hardcoded default when the variable is unset.
++std::string coordinates_path_with_env()
++{
++  if (const char* p = std::getenv("FMI_TIMEZONES_COORDINATES")) return std::string(p);
++  if (const char* d = std::getenv("FMI_TIMEZONES_DIR"))
++    return std::string(d) + "/timezone.shz";
++  return default_coordinates;
++}
++}
++
+ // ----------------------------------------------------------------------
+ /*!
+  * \brief Implementation hiding pimple
+@@ -47,7 +63,7 @@ TimeZoneFactory::Impl::Impl()
+ {
+   try
+   {
+-    m_Coordinates.reset(new WorldTimeZones(default_coordinates));
++    m_Coordinates.reset(new WorldTimeZones(coordinates_path_with_env()));
+   }
+   catch (...)
+   {
+diff --git a/macgyver/TimeZones.cpp b/macgyver/TimeZones.cpp
+index 1441d89..9ced9d1 100644
+--- a/macgyver/TimeZones.cpp
++++ b/macgyver/TimeZones.cpp
+@@ -8,8 +8,10 @@
+ #include "Exception.h"
+ #include "StringConversion.h"
+ #include "WorldTimeZones.h"
++#include <cstdlib>
+ #include <memory>
+ #include <stdexcept>
++#include <string>
+ #include <unordered_map>
+ 
+ using namespace std;
+@@ -17,6 +19,28 @@ using namespace std;
+ const char* default_regions = "/usr/share/smartmet/timezones/date_time_zonespec.csv";
+ const char* default_coordinates = "/usr/share/smartmet/timezones/timezone.shz";
+ 
++namespace
++{
++// Optional env-var overrides for the default data file locations. Useful for
++// running tests or installs that don't write to /usr/share (e.g. macOS SIP,
++// Homebrew, non-root installs). When the variable is unset the original
++// hardcoded default is used unchanged.
++std::string regions_path_with_env()
++{
++  if (const char* p = std::getenv("FMI_TIMEZONES_REGIONS")) return std::string(p);
++  if (const char* d = std::getenv("FMI_TIMEZONES_DIR"))
++    return std::string(d) + "/date_time_zonespec.csv";
++  return default_regions;
++}
++std::string coordinates_path_with_env()
++{
++  if (const char* p = std::getenv("FMI_TIMEZONES_COORDINATES")) return std::string(p);
++  if (const char* d = std::getenv("FMI_TIMEZONES_DIR"))
++    return std::string(d) + "/timezone.shz";
++  return default_coordinates;
++}
++}
++
+ namespace Fmi
+ {
+ // ----------------------------------------------------------------------
+@@ -69,7 +93,7 @@ TimeZones::~TimeZones() = default;
+  */
+ // ----------------------------------------------------------------------
+ 
+-TimeZones::TimeZones() : itsPimple(new Pimple(default_regions, default_coordinates)) {}
++TimeZones::TimeZones() : itsPimple(new Pimple(regions_path_with_env(), coordinates_path_with_env())) {}
+ // ----------------------------------------------------------------------
+ /*!
+  * \brief Constructor with alternate data sources
+diff --git a/test/LocalDateTimeTest.cpp b/test/LocalDateTimeTest.cpp
+index 2b5aebf..a2ce33f 100644
+--- a/test/LocalDateTimeTest.cpp
++++ b/test/LocalDateTimeTest.cpp
+@@ -22,7 +22,17 @@ namespace g = boost::gregorian;
+ #define DEBUG(x) SHOW_EXCEPTIONS(x)
+ //#define DEBUG(x) x
+ 
+-static const char* default_regions = "/usr/share/smartmet/timezones/date_time_zonespec.csv";
++// Path is overridable via FMI_TIMEZONES_REGIONS or FMI_TIMEZONES_DIR
++// to allow running tests without writing to /usr/share.
++static std::string get_regions_path()
++{
++  if (const char* p = std::getenv("FMI_TIMEZONES_REGIONS")) return p;
++  if (const char* d = std::getenv("FMI_TIMEZONES_DIR"))
++    return std::string(d) + "/date_time_zonespec.csv";
++  return "/usr/share/smartmet/timezones/date_time_zonespec.csv";
++}
++static const std::string default_regions_str = get_regions_path();
++static const char* default_regions = default_regions_str.c_str();
+ 
+ namespace g = boost::gregorian;
+ namespace pt = boost::posix_time;
+diff --git a/test/MappedFileTest.cpp b/test/MappedFileTest.cpp
+index 1140b80..b95b502 100644
+--- a/test/MappedFileTest.cpp
++++ b/test/MappedFileTest.cpp
+@@ -91,11 +91,13 @@ BOOST_AUTO_TEST_CASE(test_mapping_file_with_offset)
+         Cleanup cleanup(fn);
+         
+         // Use page-aligned offset (boost::iostreams requires this)
+-        // but our madvise logic should handle the actual memory mapping correctly
++        // but our madvise logic should handle the actual memory mapping correctly.
++        // NB: page size is 4 KB on x86_64 Linux but 16 KB on arm64 macOS — sizing
++        // total_size relative to page_size keeps the test portable.
+         const long page_size = sysconf(_SC_PAGESIZE);
+-        constexpr std::size_t total_size = 16384;
++        const std::size_t total_size = static_cast<std::size_t>(page_size) * 4;
+         const std::size_t offset = page_size;  // Page-aligned offset
+-        constexpr std::size_t mapped_size = 4000;
++        const std::size_t mapped_size = 4000;
+         
+         // Write test data to file
+         {
+diff --git a/test/WorldTimeZonesTest.cpp b/test/WorldTimeZonesTest.cpp
+index 4ccd4c6..917d96c 100644
+--- a/test/WorldTimeZonesTest.cpp
++++ b/test/WorldTimeZonesTest.cpp
+@@ -1,5 +1,6 @@
+ #include "WorldTimeZones.h"
+ #include <regression/tframe.h>
++#include <cstdlib>
+ #include <iostream>
+ #include <sstream>
+ #include <string>
+@@ -8,7 +9,16 @@ using namespace std;
+ 
+ namespace WorldTimeZonesTest
+ {
+-const char* db = "/usr/share/smartmet/timezones/timezone.shz";
++// Path is overridable via FMI_TIMEZONES_COORDINATES or FMI_TIMEZONES_DIR
++// to allow running tests without writing to /usr/share (macOS, non-root, brew).
++static std::string get_db_path()
++{
++  if (const char* p = std::getenv("FMI_TIMEZONES_COORDINATES")) return p;
++  if (const char* d = std::getenv("FMI_TIMEZONES_DIR")) return std::string(d) + "/timezone.shz";
++  return "/usr/share/smartmet/timezones/timezone.shz";
++}
++static const std::string db_path = get_db_path();
++const char* db = db_path.c_str();
+ 
+ // ----------------------------------------------------------------------
+ 

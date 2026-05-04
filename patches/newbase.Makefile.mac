@@ -1,0 +1,84 @@
+# Portable Makefile for building smartmet-library-newbase on macOS
+#
+# Required brew packages:
+#   brew install boost fmt gdal double-conversion howard-hinnant-date
+#
+# Depends on smartmet-library-macgyver, smartmet-library-gis (sibling dirs).
+
+SUBNAME = newbase
+LIB     = smartmet-$(SUBNAME)
+
+PREFIX     ?= /usr/local
+BREW_PREFIX ?= $(shell brew --prefix)
+
+MACGYVER_DIR ?= $(CURDIR)/../smartmet-library-macgyver
+GIS_DIR      ?= $(CURDIR)/../smartmet-library-gis
+MACGYVER_INC ?= $(MACGYVER_DIR)
+MACGYVER_LIB ?= $(MACGYVER_DIR)
+GIS_INC      ?= $(GIS_DIR)
+GIS_LIB      ?= $(GIS_DIR)
+
+CXX      ?= clang++
+CXXSTD   ?= -std=c++17
+OPT      ?= -O2
+WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations
+CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC
+DEFINES   = -DUNIX -D_REENTRANT -DBOOST
+
+BOOST_PREFIX  := $(shell brew --prefix boost)
+FMT_PREFIX    := $(shell brew --prefix fmt)
+GDAL_PREFIX   := $(shell brew --prefix gdal)
+DC_PREFIX     := $(shell brew --prefix double-conversion)
+DATE_PREFIX   := $(shell brew --prefix howard-hinnant-date)
+
+INCLUDES := -Iinclude -I. -I$(SUBNAME) \
+            -I$(MACGYVER_INC) \
+            -I$(GIS_INC) \
+            -I$(BOOST_PREFIX)/include \
+            -I$(FMT_PREFIX)/include \
+            -I$(GDAL_PREFIX)/include \
+            -I$(DC_PREFIX)/include \
+            -I$(DATE_PREFIX)/include
+
+LIBDIRS  := -L$(MACGYVER_LIB) -L$(GIS_LIB) \
+            -L$(BOOST_PREFIX)/lib \
+            -L$(FMT_PREFIX)/lib \
+            -L$(GDAL_PREFIX)/lib \
+            -L$(DC_PREFIX)/lib \
+            -L$(DATE_PREFIX)/lib
+
+LIBS     := -lsmartmet-gis -lsmartmet-macgyver \
+            -lboost_regex -lboost_iostreams -lboost_thread -lboost_chrono \
+            -lboost_serialization -lboost_filesystem \
+            -lfmt -lgdal -ldouble-conversion -ldate-tz -liconv -lpthread
+
+SRCS := $(wildcard $(SUBNAME)/*.cpp)
+OBJS := $(patsubst %.cpp,obj/%.o,$(SRCS))
+
+DYLIB := lib$(LIB).dylib
+ALIB  := lib$(LIB).a
+
+.PHONY: all clean install
+
+all: $(ALIB) $(DYLIB)
+
+obj/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(ALIB): $(OBJS)
+	$(AR) rcs $@ $(OBJS)
+
+$(DYLIB): $(OBJS)
+	$(CXX) -dynamiclib -install_name @rpath/$(DYLIB) \
+	    $(LIBDIRS) -o $@ $(OBJS) $(LIBS)
+
+install: all
+	@mkdir -p $(PREFIX)/lib $(PREFIX)/include/smartmet/$(SUBNAME)
+	cp $(ALIB) $(DYLIB) $(PREFIX)/lib/
+	cp $(SUBNAME)/*.h $(PREFIX)/include/smartmet/$(SUBNAME)/
+
+clean:
+	rm -rf obj $(ALIB) $(DYLIB)
+
+-include $(OBJS:.o=.d)

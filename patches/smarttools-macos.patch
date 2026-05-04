@@ -1,0 +1,16 @@
+diff --git a/smarttools/NFmiSmartToolIntepreter.cpp b/smarttools/NFmiSmartToolIntepreter.cpp
+index 9323c9e..f61b83a 100644
+--- a/smarttools/NFmiSmartToolIntepreter.cpp
++++ b/smarttools/NFmiSmartToolIntepreter.cpp
+@@ -526,8 +526,9 @@ bool NFmiSmartToolIntepreter::IsPossibleCalculationLine(const std::string &theTe
+   if (theTextLine.find(string("=")) != string::npos)
+     return true;
+ 
+-  if (std::find_if(theTextLine.begin(), theTextLine.end(), std::not1(std::ptr_fun(::isspace))) !=
+-      theTextLine.end())
++  // std::not1 and std::ptr_fun were removed in C++17 — use a lambda (portable).
++  if (std::find_if(theTextLine.begin(), theTextLine.end(),
++                   [](unsigned char c) { return !std::isspace(c); }) != theTextLine.end())
+   {
+     // Riviltä löytyi sanoja ja niiden välissä space, ehtolauseet on jo tarkastettu edellä,
+     // vaikuttaa siltä että rivin lausekkeesta siis puuttuu '=' -operaattori.
