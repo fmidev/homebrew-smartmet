@@ -77,6 +77,14 @@ that still fail are:
 - `imagine/NFmiApproximateBezierFitTest` — tiny floating-point
   precision diff (likely fails the same way on Linux clang).
 
-`smartmet-qdtools` integration tests (`*.test`) are not run via brew
-because they need the upstream FMI test data corpus
-(`/usr/share/smartmet/test/data/qdtools/`).
+`smartmet-qdtools` integration tests (`*.test`) are not run via brew —
+they need the FMI test data corpus expected at
+`/usr/share/smartmet/test/data/qdtools/`. To run them locally:
+
+```sh
+git clone git@github.com:fmidev/smartmet-qdtools-test-data.git
+sudo mkdir -p /usr/share/smartmet/test/data
+sudo ln -s "$PWD/smartmet-qdtools-test-data" /usr/share/smartmet/test/data/qdtools
+# then in a checkout of smartmet-qdtools:
+make -C test test
+```
