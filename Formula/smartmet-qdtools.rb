@@ -1,3 +1,4 @@
+# Built by fmidev/homebrew-smartmet for macOS only — see README for details.
 class SmartmetQdtools < Formula
   desc "FMI smartmet — command-line tools for querydata, GRIB, NetCDF, HDF5"
   homepage "https://github.com/fmidev/smartmet-qdtools"
@@ -6,6 +7,10 @@ class SmartmetQdtools < Formula
   version "2026.05.04"
   license "MIT"
 
+  depends_on "boost"
+  depends_on "bzip2"
+  depends_on "double-conversion"
+  depends_on "eccodes"
   depends_on "fmidev/smartmet/smartmet-library-calculator"
   depends_on "fmidev/smartmet/smartmet-library-gis"
   depends_on "fmidev/smartmet/smartmet-library-imagine"
@@ -13,10 +18,6 @@ class SmartmetQdtools < Formula
   depends_on "fmidev/smartmet/smartmet-library-newbase"
   depends_on "fmidev/smartmet/smartmet-library-smarttools"
   depends_on "fmidev/smartmet/smartmet-timezones"
-  depends_on "boost"
-  depends_on "bzip2"
-  depends_on "double-conversion"
-  depends_on "eccodes"
   depends_on "fmt"
   depends_on "gdal"
   depends_on "hdf5"

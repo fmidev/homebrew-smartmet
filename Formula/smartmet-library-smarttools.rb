@@ -1,3 +1,4 @@
+# Built by fmidev/homebrew-smartmet for macOS only — see README for details.
 class SmartmetLibrarySmarttools < Formula
   desc "FMI smartmet — interpreter and helper utilities for newbase data"
   homepage "https://github.com/fmidev/smartmet-library-smarttools"
@@ -6,11 +7,11 @@ class SmartmetLibrarySmarttools < Formula
   version "2026.02.04"
   license "MIT"
 
+  depends_on "boost"
+  depends_on "double-conversion"
   depends_on "fmidev/smartmet/smartmet-library-gis"
   depends_on "fmidev/smartmet/smartmet-library-macgyver"
   depends_on "fmidev/smartmet/smartmet-library-newbase"
-  depends_on "boost"
-  depends_on "double-conversion"
   depends_on "fmt"
   depends_on "gdal"
   depends_on "howard-hinnant-date"
@@ -31,6 +32,6 @@ class SmartmetLibrarySmarttools < Formula
   end
 
   test do
-    assert_predicate lib/"libsmartmet-smarttools.dylib", :exist?
+    assert_path_exists lib/"libsmartmet-smarttools.dylib"
   end
 end

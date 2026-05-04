@@ -1,3 +1,4 @@
+# Built by fmidev/homebrew-smartmet for macOS only — see README for details.
 class SmartmetLibraryNewbase < Formula
   desc "FMI smartmet — querydata, projections, and core data structures"
   homepage "https://github.com/fmidev/smartmet-library-newbase"
@@ -6,10 +7,10 @@ class SmartmetLibraryNewbase < Formula
   version "2026.04.02"
   license "MIT"
 
-  depends_on "fmidev/smartmet/smartmet-library-gis"
-  depends_on "fmidev/smartmet/smartmet-library-macgyver"
   depends_on "boost"
   depends_on "double-conversion"
+  depends_on "fmidev/smartmet/smartmet-library-gis"
+  depends_on "fmidev/smartmet/smartmet-library-macgyver"
   depends_on "fmt"
   depends_on "gdal"
   depends_on "howard-hinnant-date"

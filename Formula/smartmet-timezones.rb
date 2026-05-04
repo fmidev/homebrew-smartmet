@@ -1,3 +1,4 @@
+# Built by fmidev/homebrew-smartmet for macOS only — see README for details.
 class SmartmetTimezones < Formula
   desc "FMI smartmet — timezone region/coordinate data files"
   homepage "https://github.com/fmidev/smartmet-timezones"
@@ -24,7 +25,7 @@ class SmartmetTimezones < Formula
   end
 
   test do
-    assert_predicate share/"smartmet/timezones/timezone.shz", :exist?
-    assert_predicate share/"smartmet/timezones/date_time_zonespec.csv", :exist?
+    assert_path_exists share/"smartmet/timezones/timezone.shz"
+    assert_path_exists share/"smartmet/timezones/date_time_zonespec.csv"
   end
 end

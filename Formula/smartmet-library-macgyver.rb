@@ -1,3 +1,4 @@
+# Built by fmidev/homebrew-smartmet for macOS only — see README for details.
 class SmartmetLibraryMacgyver < Formula
   desc "FMI smartmet — foundational utility library"
   homepage "https://github.com/fmidev/smartmet-library-macgyver"
@@ -6,13 +7,14 @@ class SmartmetLibraryMacgyver < Formula
   version "2026.03.24"
   license "MIT"
 
+  option "with-postgres", "Build PostgreSQLConnection (requires libpqxx)"
+
   depends_on "boost"
   depends_on "double-conversion"
   depends_on "fmt"
   depends_on "howard-hinnant-date"
 
   # Optional: PostgreSQL support (off by default — enable with --with-postgres)
-  option "with-postgres", "Build PostgreSQLConnection (requires libpqxx)"
   depends_on "libpqxx" => :optional
 
   def install
