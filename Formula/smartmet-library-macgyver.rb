@@ -7,15 +7,11 @@ class SmartmetLibraryMacgyver < Formula
   version "2026.03.24"
   license "MIT"
 
-  option "with-postgres", "Build PostgreSQLConnection (requires libpqxx)"
-
   depends_on "boost"
   depends_on "double-conversion"
   depends_on "fmt"
   depends_on "howard-hinnant-date"
-
-  # Optional: PostgreSQL support (off by default — enable with --with-postgres)
-  depends_on "libpqxx" => :optional
+  depends_on "libpqxx"
 
   def install
     # Apply macOS portability patch
@@ -25,10 +21,7 @@ class SmartmetLibraryMacgyver < Formula
     # Drop in the portable Makefile.mac from the tap
     cp "#{tap_patches}/macgyver.Makefile.mac", "Makefile.mac"
 
-    args = ["-f", "Makefile.mac", "-j#{ENV.make_jobs}"]
-    args << "WITH_POSTGRES=1" if build.with?("postgres")
-    system "make", *args
-
+    system "make", "-f", "Makefile.mac", "-j#{ENV.make_jobs}", "WITH_POSTGRES=1"
     system "make", "-f", "Makefile.mac", "install", "PREFIX=#{prefix}"
   end
 
