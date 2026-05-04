@@ -37,8 +37,10 @@ class SmartmetQdtools < Formula
     imagine    = Formula["fmidev/smartmet/smartmet-library-imagine"].opt_prefix
     calculator = Formula["fmidev/smartmet/smartmet-library-calculator"].opt_prefix
     smarttools = Formula["fmidev/smartmet/smartmet-library-smarttools"].opt_prefix
+    tz = Formula["fmidev/smartmet/smartmet-timezones"].opt_share/"smartmet/timezones"
 
     system "make", "-f", "Makefile.mac", "-j#{ENV.make_jobs}",
+           "TIMEZONES_DIR=#{tz}",
            "MACGYVER_INC=#{macgyver}/include/smartmet",   "MACGYVER_LIB=#{macgyver}/lib",
            "GIS_INC=#{gis}/include/smartmet",             "GIS_LIB=#{gis}/lib",
            "NEWBASE_INC=#{newbase}/include/smartmet",     "NEWBASE_LIB=#{newbase}/lib",
@@ -58,17 +60,6 @@ class SmartmetQdtools < Formula
            "NETCDFCXX_PREFIX=#{Formula["netcdf-cxx"].opt_prefix}",
            "HDF5_PREFIX=#{Formula["hdf5"].opt_prefix}"
     system "make", "-f", "Makefile.mac", "install", "PREFIX=#{prefix}"
-  end
-
-  def caveats
-    tz = Formula["fmidev/smartmet/smartmet-timezones"].opt_share/"smartmet/timezones"
-    <<~EOS
-      Many qdtools commands need timezone data. Set:
-
-          export FMI_TIMEZONES_DIR=#{tz}
-
-      (or add it to your shell rc).
-    EOS
   end
 
   test do

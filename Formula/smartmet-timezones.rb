@@ -12,18 +12,6 @@ class SmartmetTimezones < Formula
     (share/"smartmet/timezones").install "share/date_time_zonespec.csv"
   end
 
-  def caveats
-    <<~EOS
-      Smartmet libraries hardcode the path /usr/share/smartmet/timezones/.
-      With the macOS env-var patch (applied in this tap's smartmet-library-macgyver),
-      set FMI_TIMEZONES_DIR to the brew location:
-
-          export FMI_TIMEZONES_DIR=#{opt_share}/smartmet/timezones
-
-      You can also drop this into your shell rc file.
-    EOS
-  end
-
   test do
     assert_path_exists share/"smartmet/timezones/timezone.shz"
     assert_path_exists share/"smartmet/timezones/date_time_zonespec.csv"

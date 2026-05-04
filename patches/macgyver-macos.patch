@@ -70,10 +70,10 @@ index aada5c8..2efd7fc 100644
          exception.addParameter("address", tmp);
          exception.addParameter("size", std::to_string(aligned_size));
 diff --git a/macgyver/TimeZoneFactory.cpp b/macgyver/TimeZoneFactory.cpp
-index 12e8af6..b26a301 100644
+index 12e8af6..6c17d39 100644
 --- a/macgyver/TimeZoneFactory.cpp
 +++ b/macgyver/TimeZoneFactory.cpp
-@@ -8,9 +8,11 @@
+@@ -8,15 +8,36 @@
  #include "Exception.h"
  #include "StringConversion.h"
  #include "WorldTimeZones.h"
@@ -85,10 +85,16 @@ index 12e8af6..b26a301 100644
  
  using namespace std;
  
-@@ -18,6 +20,20 @@ namespace Fmi
+ namespace Fmi
  {
- static const char* default_coordinates = "/usr/share/smartmet/timezones/timezone.shz";
- 
+-static const char* default_coordinates = "/usr/share/smartmet/timezones/timezone.shz";
++// FMI_TIMEZONES_DEFAULT_DIR can be set at compile time to override the install
++// location of the timezone data files. See macgyver/TimeZones.cpp for details.
++#ifndef FMI_TIMEZONES_DEFAULT_DIR
++#define FMI_TIMEZONES_DEFAULT_DIR "/usr/share/smartmet/timezones"
++#endif
++static const char* default_coordinates = FMI_TIMEZONES_DEFAULT_DIR "/timezone.shz";
++
 +namespace
 +{
 +// Optional env-var override for the timezone coordinate file. Useful for
@@ -102,11 +108,10 @@ index 12e8af6..b26a301 100644
 +  return default_coordinates;
 +}
 +}
-+
+ 
  // ----------------------------------------------------------------------
  /*!
-  * \brief Implementation hiding pimple
-@@ -47,7 +63,7 @@ TimeZoneFactory::Impl::Impl()
+@@ -47,7 +68,7 @@ TimeZoneFactory::Impl::Impl()
  {
    try
    {
@@ -116,10 +121,10 @@ index 12e8af6..b26a301 100644
    catch (...)
    {
 diff --git a/macgyver/TimeZones.cpp b/macgyver/TimeZones.cpp
-index 1441d89..9ced9d1 100644
+index 1441d89..55b6a8f 100644
 --- a/macgyver/TimeZones.cpp
 +++ b/macgyver/TimeZones.cpp
-@@ -8,8 +8,10 @@
+@@ -8,14 +8,44 @@
  #include "Exception.h"
  #include "StringConversion.h"
  #include "WorldTimeZones.h"
@@ -130,10 +135,18 @@ index 1441d89..9ced9d1 100644
  #include <unordered_map>
  
  using namespace std;
-@@ -17,6 +19,28 @@ using namespace std;
- const char* default_regions = "/usr/share/smartmet/timezones/date_time_zonespec.csv";
- const char* default_coordinates = "/usr/share/smartmet/timezones/timezone.shz";
  
+-const char* default_regions = "/usr/share/smartmet/timezones/date_time_zonespec.csv";
+-const char* default_coordinates = "/usr/share/smartmet/timezones/timezone.shz";
++// FMI_TIMEZONES_DEFAULT_DIR can be set at compile time to override the install
++// location of the timezone data files. Useful for non-FHS layouts (Homebrew,
++// non-root installs). Default preserves the historical /usr/share path.
++#ifndef FMI_TIMEZONES_DEFAULT_DIR
++#define FMI_TIMEZONES_DEFAULT_DIR "/usr/share/smartmet/timezones"
++#endif
++const char* default_regions = FMI_TIMEZONES_DEFAULT_DIR "/date_time_zonespec.csv";
++const char* default_coordinates = FMI_TIMEZONES_DEFAULT_DIR "/timezone.shz";
++
 +namespace
 +{
 +// Optional env-var overrides for the default data file locations. Useful for
@@ -155,11 +168,10 @@ index 1441d89..9ced9d1 100644
 +  return default_coordinates;
 +}
 +}
-+
+ 
  namespace Fmi
  {
- // ----------------------------------------------------------------------
-@@ -69,7 +93,7 @@ TimeZones::~TimeZones() = default;
+@@ -69,7 +99,7 @@ TimeZones::~TimeZones() = default;
   */
  // ----------------------------------------------------------------------
  

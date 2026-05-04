@@ -9,6 +9,7 @@ class SmartmetLibraryMacgyver < Formula
 
   depends_on "boost"
   depends_on "double-conversion"
+  depends_on "fmidev/smartmet/smartmet-timezones"
   depends_on "fmt"
   depends_on "howard-hinnant-date"
   depends_on "libpqxx"
@@ -21,7 +22,9 @@ class SmartmetLibraryMacgyver < Formula
     # Drop in the portable Makefile.mac from the tap
     cp "#{tap_patches}/macgyver.Makefile.mac", "Makefile.mac"
 
-    system "make", "-f", "Makefile.mac", "-j#{ENV.make_jobs}", "WITH_POSTGRES=1"
+    tz = Formula["fmidev/smartmet/smartmet-timezones"].opt_share/"smartmet/timezones"
+    system "make", "-f", "Makefile.mac", "-j#{ENV.make_jobs}",
+           "WITH_POSTGRES=1", "TIMEZONES_DIR=#{tz}"
     system "make", "-f", "Makefile.mac", "install", "PREFIX=#{prefix}"
   end
 

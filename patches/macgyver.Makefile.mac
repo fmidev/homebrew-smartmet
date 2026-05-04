@@ -31,6 +31,12 @@ WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations
 CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC
 DEFINES   = -DUNIX -D_REENTRANT -DPQXX_HIDE_EXP_OPTIONAL -DUSE_OS_TZDB=$(USE_OS_TZDB)
 
+# Bake an alternate default timezone data dir into the binary (avoids needing
+# FMI_TIMEZONES_DIR env at runtime for non-FHS installs like Homebrew).
+ifneq ($(TIMEZONES_DIR),)
+DEFINES += -DFMI_TIMEZONES_DEFAULT_DIR='"$(TIMEZONES_DIR)"'
+endif
+
 # ---- Brew dependency paths --------------------------------------------------
 BOOST_PREFIX  := $(shell brew --prefix boost)
 FMT_PREFIX    := $(shell brew --prefix fmt)

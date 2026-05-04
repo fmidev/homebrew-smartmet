@@ -59,6 +59,11 @@ WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations
 CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC -fpermissive
 DEFINES   = -DUNIX
 
+# Bake an alternate default timezone data dir into qdpoint (no runtime env needed).
+ifneq ($(TIMEZONES_DIR),)
+DEFINES += -DFMI_TIMEZONES_DEFAULT_DIR='"$(TIMEZONES_DIR)"'
+endif
+
 # ---- Brew dependency paths --------------------------------------------------
 BOOST_PREFIX    := $(shell brew --prefix boost)
 FMT_PREFIX      := $(shell brew --prefix fmt)
@@ -156,8 +161,12 @@ SRC_OBJS := $(patsubst %.cpp,obj/%.o,$(SRC_SRCS))
 
 # ---- Main programs ----------------------------------------------------------
 ALL_MAIN_SRCS := $(wildcard main/*.cpp)
-# qddifference depends on dtl (header-only diff lib, not in Homebrew). Skip.
-EXCLUDED_MAIN_SRCS := main/qddifference.cpp
+# qddifference depends on dtl (header-only diff lib). Vendored under include/dtl/
+# so this is built by default; set NO_QDDIFFERENCE=1 to skip if dtl is missing.
+EXCLUDED_MAIN_SRCS :=
+ifeq ($(NO_QDDIFFERENCE),1)
+    EXCLUDED_MAIN_SRCS += main/qddifference.cpp
+endif
 ifneq ($(WITH_BUFR),1)
     EXCLUDED_MAIN_SRCS += main/bufrtoqd.cpp main/radartoqd.cpp
 endif

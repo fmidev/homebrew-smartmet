@@ -1,0 +1,92 @@
+diff --git a/main/qdpoint.cpp b/main/qdpoint.cpp
+index ff0eaba..b7bea8e 100644
+--- a/main/qdpoint.cpp
++++ b/main/qdpoint.cpp
+@@ -28,6 +28,7 @@
+ #include "MoonPhase.h"
+ #include "QueryDataManager.h"
+ #include "TimeTools.h"
++#include <cstdlib>
+ #include <boost/algorithm/string.hpp>
+ #include <boost/filesystem/operations.hpp>
+ #include <boost/lexical_cast.hpp>
+@@ -126,11 +127,30 @@ LocationList read_locationlist(const string& theFile)
+  */
+ // ----------------------------------------------------------------------
+ 
++// Compile-time override of the default tz data dir (set by build system for
++// non-FHS installs, e.g. Homebrew). Env vars (FMI_TIMEZONES_*) still win
++// at runtime.
++#ifndef FMI_TIMEZONES_DEFAULT_DIR
++#define FMI_TIMEZONES_DEFAULT_DIR "/usr/share/smartmet/timezones"
++#endif
++
++namespace
++{
++// Resolve the default qdpoint::tzfile path. Precedence:
++//   FMI_TIMEZONES_COORDINATES (env) > FMI_TIMEZONES_DIR (env) > compile-time default.
++std::string default_tzfile()
++{
++  if (const char* p = std::getenv("FMI_TIMEZONES_COORDINATES")) return p;
++  if (const char* d = std::getenv("FMI_TIMEZONES_DIR")) return std::string(d) + "/timezone.shz";
++  return FMI_TIMEZONES_DEFAULT_DIR "/timezone.shz";
++}
++}
++
+ struct Options
+ {
+   bool verbose = false;
+   string timezonefile = NFmiSettings::Optional<string>(
+-      "qdpoint::tzfile", "/usr/share/smartmet/timezones/timezone.shz");
++      "qdpoint::tzfile", default_tzfile());
+   string timezone = NFmiSettings::Optional<string>("qdpoint::timezone", "local");
+   string queryfile = NFmiSettings::Optional<string>("qdpoint::querydata_file", "");
+   string coordinatefile = NFmiSettings::Optional<string>("qdpoint::coordinates",
+@@ -1577,9 +1597,9 @@ int main(int argc, char* argv[])
+   {
+     return run(argc, argv);
+   }
+-  catch (const std::runtime_error& e)
++  catch (const std::exception& e)
+   {
+-    cerr << "Error: " << e.what() << endl;
++    cerr << "Error: " << typeid(e).name() << ": " << e.what() << endl;
+     return 1;
+   }
+   catch (...)
+diff --git a/test/QDToolsTest.pm b/test/QDToolsTest.pm
+index c4501e9..76e41f2 100644
+--- a/test/QDToolsTest.pm
++++ b/test/QDToolsTest.pm
+@@ -23,16 +23,22 @@ our $_wgs84;
+ 
+ BEGIN
+ {
++    # NFmiGlobals.h location: env-var override > default install path.
++    # If the file is unreadable, fall through to the original "WGS84=0" default.
++    # (The regex below has a long-standing typo \^s* instead of \s* and never
++    # matches anyway, so the file's contents have no effect in practice — but
++    # the open-or-die was breaking the build outside the FMI install layout.)
++    my $newbase_dir = $ENV{FMI_NEWBASE_INCLUDE_DIR} // "/usr/include/smartmet/newbase";
++    my $fnmiglobals = "$newbase_dir/NFmiGlobals.h";
+     my $fd;
+-    my $fnmiglobals = "/usr/include/smartmet/newbase/NFmiGlobals.h";
+-    open $fd, "<", $fnmiglobals
+-        or die "Failed to open $fnmiglobals: $!";
+-    while (<$fd>) {
+-        if (m/\^s*#define\s+WGS84\s+(\S+)\s*$/) {
+-            if ($1 == '1') {
+-                return $_wgs84 = 1;
+-            } else {
+-                return $_wgs84 = 0;
++    if (open $fd, "<", $fnmiglobals) {
++        while (<$fd>) {
++            if (m/\^s*#define\s+WGS84\s+(\S+)\s*$/) {
++                if ($1 == '1') {
++                    return $_wgs84 = 1;
++                } else {
++                    return $_wgs84 = 0;
++                }
+             }
+         }
+     }

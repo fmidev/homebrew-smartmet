@@ -11,16 +11,16 @@ brew install fmidev/smartmet/smartmet-qdtools
 
 This pulls in the full library stack (macgyver → gis → newbase → imagine,
 calculator, smarttools → qdtools) plus 42 command-line tools (`qdinfo`,
-`qdstat`, `gribtoqd`, `qdtogrib`, `nctoqd`, `h5toqd`, …).
+`qdstat`, `gribtoqd`, `qdtogrib`, `nctoqd`, `h5toqd`, …) and the
+timezone data files. The timezone path is baked into the binaries at
+build time, so no environment variable setup is needed.
 
-After installing, set the timezone data path so commands that load
-timezone info (most of qdtools) can find it:
+If you want to point the binaries at a different timezone dataset (e.g.
+for testing), the env-var override still works:
 
 ```sh
-export FMI_TIMEZONES_DIR=$(brew --prefix smartmet-timezones)/share/smartmet/timezones
+export FMI_TIMEZONES_DIR=/path/to/smartmet/timezones
 ```
-
-(Add this to your shell rc.)
 
 ## Available formulae
 
