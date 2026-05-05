@@ -1,0 +1,107 @@
+name: auto-update-formulae
+
+# Weekly check: are any upstream fmidev/smartmet-* repos newer than what
+# this tap's formulae pin? If so, open a single PR that bumps `revision:`
+# (and `version:` to today's date) for the affected formulae. test-bot
+# then builds bottles on the PR; apply the `pr-pull` label to publish.
+#
+# If upstream commits include changes that break our patches, the test-bot
+# CI run on the auto-PR will fail — manual intervention required to
+# regenerate the patches.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # every Monday at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check upstream commits and update formulae
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y.%m.%d)
+          changed=()
+          summary=""
+
+          # formula-name : upstream-repo
+          declare -A repos=(
+            [smartmet-library-macgyver]=fmidev/smartmet-library-macgyver
+            [smartmet-library-gis]=fmidev/smartmet-library-gis
+            [smartmet-library-newbase]=fmidev/smartmet-library-newbase
+            [smartmet-library-imagine]=fmidev/smartmet-library-imagine
+            [smartmet-library-calculator]=fmidev/smartmet-library-calculator
+            [smartmet-library-smarttools]=fmidev/smartmet-library-smarttools
+            [smartmet-qdtools]=fmidev/smartmet-qdtools
+            [smartmet-timezones]=fmidev/smartmet-timezones
+          )
+
+          for name in "${!repos[@]}"; do
+            repo=${repos[$name]}
+            file="Formula/${name}.rb"
+            current=$(grep -oE '[0-9a-f]{40}' "$file" | head -1)
+            latest=$(gh api "/repos/${repo}/commits/HEAD" --jq .sha)
+            if [[ -z "$latest" ]]; then
+              echo "::warning::could not resolve HEAD for $repo — skipping"
+              continue
+            fi
+            if [[ "$current" != "$latest" ]]; then
+              echo "$name: $current -> $latest"
+              # Replace revision (sha)
+              sed -i "s|$current|$latest|" "$file"
+              # Replace version line with today's calver date
+              sed -i -E "s|^(  version )\".*\"|\1\"$today\"|" "$file"
+              changed+=("$name")
+              short=${latest:0:8}
+              summary+="- ${name}: \`${current:0:8}\` → \`${short}\` (https://github.com/${repo}/commit/${latest})\n"
+            fi
+          done
+
+          if [[ ${#changed[@]} -eq 0 ]]; then
+            echo "No formulae need updating."
+            echo "changed=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "changed=${changed[*]}"
+            echo "summary<<EOF"
+            printf "%b" "$summary"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open / update PR
+        if: steps.bump.outputs.changed != ''
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: auto-update-formulae
+          delete-branch: true
+          base: main
+          commit-message: "auto: bump pinned revisions to upstream HEADs"
+          title: "auto: bump pinned revisions to upstream HEADs"
+          body: |
+            Automated weekly check found new commits on upstream
+            `fmidev/smartmet-*` repositories. Bumping `revision:` and
+            `version:` for the affected formulae:
+
+            ${{ steps.bump.outputs.summary }}
+
+            CI (`brew test-bot`) will rebuild bottles on this PR. If the
+            build is green, apply the **`pr-pull`** label to publish the
+            bottles to a GitHub Release.
+
+            **If CI fails:** likely an upstream change conflicts with one of
+            our `patches/*.patch` files. Inspect the failing log and
+            regenerate the patch from a fresh upstream checkout, then push
+            the fix to this branch.
