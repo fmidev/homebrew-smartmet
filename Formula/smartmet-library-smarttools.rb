@@ -7,6 +7,12 @@ class SmartmetLibrarySmarttools < Formula
   version "2026.02.04"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-smarttools-2026.02.04"
+    rebuild 1
+    sha256 cellar: :any, arm64_tahoe: "9d7691d1e7dc3dd0f710fe63ead280079567485ea3e0989dcf53918d141bc8e8"
+  end
+
   depends_on "boost"
   depends_on "double-conversion"
   depends_on "fmidev/smartmet/smartmet-library-gis"
