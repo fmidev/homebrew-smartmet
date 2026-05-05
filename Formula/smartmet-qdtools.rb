@@ -7,6 +7,12 @@ class SmartmetQdtools < Formula
   version "2026.05.04"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-qdtools-2026.05.04"
+    rebuild 1
+    sha256 cellar: :any, arm64_tahoe: "c2dadba10e6a7a64e264d91cb934aab658867f14b83b80dd05f17137391df42d"
+  end
+
   depends_on "boost"
   depends_on "bzip2"
   depends_on "double-conversion"
