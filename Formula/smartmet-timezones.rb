@@ -7,6 +7,12 @@ class SmartmetTimezones < Formula
   version "2026.05.04"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-timezones-2026.05.04"
+    rebuild 1
+    sha256 cellar: :any_skip_relocation, arm64_tahoe: "8c9f9243829e461d9cb72189864f4eb916100ffedfa7093140eee3e6063aa068"
+  end
+
   def install
     (share/"smartmet/timezones").install "share/timezone.shz"
     (share/"smartmet/timezones").install "share/date_time_zonespec.csv"
