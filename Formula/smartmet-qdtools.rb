@@ -36,6 +36,7 @@ class SmartmetQdtools < Formula
 
   def install
     tap_patches = Tap.fetch("fmidev/smartmet").path/"patches"
+    system "patch", "-p1", "-i", "#{tap_patches}/qdtools-macos.patch"
     cp "#{tap_patches}/qdtools.Makefile.mac", "Makefile.mac"
 
     # Vendor dtl headers so qddifference compiles
