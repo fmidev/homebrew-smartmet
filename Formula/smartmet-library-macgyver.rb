@@ -7,6 +7,12 @@ class SmartmetLibraryMacgyver < Formula
   version "2026.03.24"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-macgyver-2026.03.24"
+    rebuild 1
+    sha256 cellar: :any, arm64_tahoe: "d7bc0c869b6d7f47d33747d04e7af2eaddb8de1c81b9eae4f292fd73a123f3a5"
+  end
+
   depends_on "boost"
   depends_on "double-conversion"
   depends_on "fmidev/smartmet/smartmet-timezones"
