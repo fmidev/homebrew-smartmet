@@ -76,6 +76,12 @@ class SmartmetQdtools < Formula
   end
 
   test do
-    system bin/"qdinfo", "--version"
+    # Most qdtools binaries print usage and exit non-zero on no args, so
+    # check installed binaries directly. qdinfo with no args exits 0.
+    assert_path_exists bin/"qdinfo"
+    assert_path_exists bin/"qdstat"
+    assert_path_exists bin/"gribtoqd"
+    assert_path_exists bin/"qdtogrib"
+    system bin/"qdinfo"
   end
 end

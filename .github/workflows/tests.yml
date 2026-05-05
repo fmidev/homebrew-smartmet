@@ -19,7 +19,13 @@ jobs:
       fail-fast: false
       matrix:
         # macOS-only tap — Linux users should use FMI's RPMs.
-        os: [ macos-15-intel, macos-26 ]
+        # Apple Silicon only: upstream Homebrew core doesn't ship Intel
+        # bottles for macOS 15 (sequoia) for the deps we need
+        # (boost, fmt, howard-hinnant-date, libpq, libpqxx). Without those,
+        # brew test-bot's "unbottled dependencies" check skips our entire
+        # chain. Intel macOS 14 (sonoma) bottles do exist but the runner is
+        # gone from GitHub Actions.
+        os: [ macos-26 ]
     runs-on: ${{ matrix.os }}
     permissions:
       actions: read
