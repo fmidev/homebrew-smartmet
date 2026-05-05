@@ -44,9 +44,12 @@ Homebrew:
 |------------------------------------------|---------------------|
 | `bufrtoqd`, `radartoqd` (BUFR conversion)| `libecbufr`, `libbufr` |
 | `metar2qd` (METAR conversion)            | `libmetar`          |
-| `qddifference` (querydata diffing)       | `dtl` (header-only) |
 | `EPSGInfo` API (gis)                     | `sqlite3pp`         |
-| Postgres support (macgyver)              | `libpqxx` (in brew) — pass `--with-postgres` |
+
+`qddifference` (querydata diffing, depends on the header-only `dtl` library)
+and Postgres support in `smartmet-library-macgyver` (depends on `libpqxx`)
+are both built by default — `dtl` is fetched automatically as a build-time
+resource, and `libpqxx` is a brew dependency.
 
 ## How this works
 
@@ -66,6 +69,20 @@ The tap also drops in a portable `Makefile.mac` for each package
 (stored under `patches/*.Makefile.mac`) since the upstream Makefiles
 depend on FMI's internal `smartbuildcfg` + RPM tooling that isn't
 available on macOS.
+
+## Staying in sync with upstream
+
+A scheduled GitHub Actions workflow (`.github/workflows/auto-update.yml`)
+runs every Monday and compares each formula's pinned `revision:` with
+the latest commit on the corresponding `fmidev/smartmet-*` upstream repo.
+If anything is newer it opens a PR bumping `revision:` and `version:`,
+which CI then rebuilds bottles for. Apply the **`pr-pull`** label on
+the auto-PR to publish the refreshed bottles.
+
+You can also trigger the check manually from the Actions tab
+(`auto-update-formulae` → "Run workflow"). If an upstream change
+breaks one of our `patches/*.patch` files, CI will fail on the auto-PR
+and a maintainer needs to regenerate the patch.
 
 ## Known test failures (informational)
 
