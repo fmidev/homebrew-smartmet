@@ -12,6 +12,7 @@ class SmartmetLibraryMacgyver < Formula
   depends_on "fmidev/smartmet/smartmet-timezones"
   depends_on "fmt"
   depends_on "howard-hinnant-date"
+  depends_on "libpq"
   depends_on "libpqxx"
 
   def install

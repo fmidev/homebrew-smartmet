@@ -27,9 +27,22 @@ class SmartmetQdtools < Formula
   depends_on "netcdf"
   depends_on "netcdf-cxx"
 
+  # Vendored at build time: dtl is a header-only diff library used by
+  # qddifference. Not in Homebrew core, so we fetch it directly.
+  resource "dtl" do
+    url "https://github.com/cubicdaiya/dtl.git",
+        revision: "32567bb9ec704f09040fb1ed7431a3d967e3df03"
+  end
+
   def install
     tap_patches = Tap.fetch("fmidev/smartmet").path/"patches"
     cp "#{tap_patches}/qdtools.Makefile.mac", "Makefile.mac"
+
+    # Vendor dtl headers so qddifference compiles
+    resource("dtl").stage do
+      mkdir_p buildpath/"include/dtl"
+      cp Dir["dtl/*.hpp"], buildpath/"include/dtl/"
+    end
 
     macgyver   = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
     gis        = Formula["fmidev/smartmet/smartmet-library-gis"].opt_prefix
