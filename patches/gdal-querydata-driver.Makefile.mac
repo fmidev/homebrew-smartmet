@@ -1,0 +1,111 @@
+# Portable Makefile for building the QUERYDATA GDAL driver plugin on macOS.
+#
+# This skips the vendor/ subtree dance from the main Makefile and links
+# dynamically against the brew-installed smartmet-library-* dylibs.
+#
+# Required brew packages:
+#   brew install gdal fmt boost double-conversion howard-hinnant-date \
+#                fmidev/smartmet/smartmet-library-newbase \
+#                fmidev/smartmet/smartmet-library-macgyver \
+#                fmidev/smartmet/smartmet-library-gis
+#
+# Build:    make -f Makefile.mac
+# Install:  make -f Makefile.mac install   (drops into $(GDAL_PLUGIN_DIR))
+
+SUBNAME := qd_driver
+DRIVER  := querydata
+PLUGIN  := gdal_$(DRIVER).dylib
+
+# Sibling smartmet libs (built but not installed): point at sibling repos.
+# Override *_INC / *_LIB separately for installed (Homebrew) layouts.
+MACGYVER_DIR ?= $(CURDIR)/../smartmet-library-macgyver
+GIS_DIR      ?= $(CURDIR)/../smartmet-library-gis
+NEWBASE_DIR  ?= $(CURDIR)/../smartmet-library-newbase
+MACGYVER_INC ?= $(MACGYVER_DIR)
+MACGYVER_LIB ?= $(MACGYVER_DIR)
+GIS_INC      ?= $(GIS_DIR)
+GIS_LIB      ?= $(GIS_DIR)
+NEWBASE_INC  ?= $(NEWBASE_DIR)
+NEWBASE_LIB  ?= $(NEWBASE_DIR)
+
+CXX      ?= clang++
+CXXSTD   ?= -std=c++17
+OPT      ?= -O2
+WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations
+CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC
+DEFINES   = -DUNIX -D_REENTRANT -DBOOST -DUSE_UNSTABLE_GEOS_CPP_API -DUSE_OS_TZDB=1
+
+BOOST_PREFIX  := $(shell brew --prefix boost)
+FMT_PREFIX    := $(shell brew --prefix fmt)
+GDAL_PREFIX   := $(shell brew --prefix gdal)
+DC_PREFIX     := $(shell brew --prefix double-conversion)
+DATE_PREFIX   := $(shell brew --prefix howard-hinnant-date)
+
+INCLUDES := -I$(SUBNAME) \
+            -I$(MACGYVER_INC) -I$(GIS_INC) -I$(NEWBASE_INC) \
+            -I$(BOOST_PREFIX)/include \
+            -I$(FMT_PREFIX)/include \
+            -I$(GDAL_PREFIX)/include \
+            -I$(DC_PREFIX)/include \
+            -I$(DATE_PREFIX)/include
+
+LIBDIRS  := -L$(MACGYVER_LIB) -L$(GIS_LIB) -L$(NEWBASE_LIB) \
+            -L$(BOOST_PREFIX)/lib \
+            -L$(FMT_PREFIX)/lib \
+            -L$(GDAL_PREFIX)/lib \
+            -L$(DC_PREFIX)/lib \
+            -L$(DATE_PREFIX)/lib
+
+RPATH := -Wl,-rpath,$(MACGYVER_LIB) \
+         -Wl,-rpath,$(GIS_LIB) \
+         -Wl,-rpath,$(NEWBASE_LIB)
+
+LIBS := -lsmartmet-newbase -lsmartmet-gis -lsmartmet-macgyver \
+        -lboost_regex -lboost_iostreams -lboost_thread -lboost_chrono \
+        -lboost_serialization -lboost_filesystem \
+        -lfmt -lgdal -ldouble-conversion -ldate-tz \
+        -liconv -lpthread
+
+SRCS := $(wildcard $(SUBNAME)/*.cpp)
+OBJS := $(patsubst %.cpp,obj/%.o,$(SRCS))
+
+# Install location: by default Homebrew puts plugins in <prefix>/lib/gdalplugins.
+PREFIX          ?= /opt/homebrew
+GDAL_PLUGIN_DIR ?= $(PREFIX)/lib/gdalplugins
+
+.PHONY: all clean install
+
+all: $(PLUGIN)
+
+obj/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c $< -o $@
+
+# `-undefined dynamic_lookup` leaves GDAL symbols unresolved at link time so
+# they bind to whichever libgdal loads the plugin (Homebrew gdal, QGIS-bundled
+# gdal, etc.). Without it, the plugin would link against Homebrew's libgdal
+# specifically, and GDAL's driver-manager singleton would be a different
+# instance from QGIS's — registrations from this plugin wouldn't show up in
+# QGIS's driver list. The smartmet libs and other deps are still hard-linked
+# normally so they get a single consistent copy.
+LIBS_NO_GDAL := $(filter-out -lgdal,$(LIBS))
+
+$(PLUGIN): $(OBJS)
+	$(CXX) -dynamiclib -install_name @rpath/$(PLUGIN) \
+	    -Wl,-undefined,dynamic_lookup \
+	    $(LIBDIRS) $(RPATH) -o $@ $(OBJS) $(LIBS_NO_GDAL)
+	# Ad-hoc codesign: macOS hardened runtime SIGKILLs processes loading
+	# unsigned dylibs. The -undefined dynamic_lookup flag invalidates the
+	# default linker signature, so re-sign explicitly.
+	codesign -s - --force $@
+
+install: all
+	@mkdir -p $(GDAL_PLUGIN_DIR)
+	cp $(PLUGIN) $(GDAL_PLUGIN_DIR)/
+	# Re-sign after install: macOS strips signatures on cross-volume copy.
+	codesign -s - --force $(GDAL_PLUGIN_DIR)/$(PLUGIN)
+
+clean:
+	rm -rf obj $(PLUGIN)
+
+-include $(OBJS:.o=.d)
