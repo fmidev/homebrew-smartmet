@@ -7,6 +7,11 @@ class SmartmetGdalQuerydataDriver < Formula
   version "2026.05.06"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-gdal-querydata-driver-2026.05.06"
+    sha256 cellar: :any, arm64_tahoe: "3d9cc04bc16494b4dde6a511da7bf58f187bd079c2177787d48f43ef90f2cbf4"
+  end
+
   depends_on "boost"
   depends_on "double-conversion"
   depends_on "fmidev/smartmet/smartmet-library-gis"
