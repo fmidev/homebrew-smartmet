@@ -7,6 +7,11 @@ class SmartmetQdless < Formula
   version "2026.05.08.1"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-qdless-2026.05.08.1"
+    sha256 arm64_tahoe: "ceea286a6e8cd5eacc94781ec0f516897b742e2b909552779c0b8fbfc75a603f"
+  end
+
   # GRIB/NetCDF input requires smartmet-library-grid-files, which is not yet
   # in this tap. The QueryData (.sqd) path uses newbase directly and is built;
   # GRIB and NetCDF inputs return a clear "not built" error.
