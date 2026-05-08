@@ -3,15 +3,9 @@ class SmartmetLibraryMacgyver < Formula
   desc "FMI smartmet — foundational utility library"
   homepage "https://github.com/fmidev/smartmet-library-macgyver"
   url "https://github.com/fmidev/smartmet-library-macgyver.git",
-      revision: "73de27ea386d6334abb87f24723816bfbce8f913"
-  version "2026.03.24"
+      revision: "bc6bb9b6a5d775b0bcf27f9e5bc1b887ebaafc34"
+  version "2026.05.08"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-macgyver-2026.03.24"
-    rebuild 1
-    sha256 cellar: :any, arm64_tahoe: "d7bc0c869b6d7f47d33747d04e7af2eaddb8de1c81b9eae4f292fd73a123f3a5"
-  end
 
   depends_on "boost"
   depends_on "double-conversion"
