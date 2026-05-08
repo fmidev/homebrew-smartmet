@@ -1,5 +1,5 @@
 diff --git a/include/QdlessApp.h b/include/QdlessApp.h
-index c5e2e3a..9645729 100644
+index cbf8f7d..e17bdcb 100644
 --- a/include/QdlessApp.h
 +++ b/include/QdlessApp.h
 @@ -14,12 +14,21 @@
@@ -28,7 +28,7 @@ index c5e2e3a..9645729 100644
    std::string paletteOverride;    // empty -> resolve via config / built-in
    int timeIndex = 0;              // 0-based; -1 means last
 diff --git a/source/QdlessApp.cpp b/source/QdlessApp.cpp
-index e3f6e5c..9970d62 100644
+index 1e1e2a7..3106efd 100644
 --- a/source/QdlessApp.cpp
 +++ b/source/QdlessApp.cpp
 @@ -787,7 +787,7 @@ bool App::ensureCityIndex() const
