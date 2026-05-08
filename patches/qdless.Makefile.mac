@@ -1,0 +1,157 @@
+# Portable Makefile for building smartmet-qdless on macOS
+#
+# Required brew packages:
+#   brew install boost ncurses jsoncpp netcdf-cxx \
+#                fmidev/smartmet/smartmet-library-macgyver \
+#                fmidev/smartmet/smartmet-library-gis \
+#                fmidev/smartmet/smartmet-library-newbase \
+#                fmidev/smartmet/smartmet-library-imagine \
+#                fmidev/smartmet/smartmet-library-smarttools \
+#                fmidev/smartmet/smartmet-library-calculator
+#
+# Toggles:
+#   WITH_GRID_FILES=1  enable GRIB / NetCDF input via smartmet-library-grid-files
+#                      (default OFF — grid-files isn't in Homebrew yet; the
+#                       resulting binary handles QueryData/.sqd only)
+#
+# Sibling-build defaults assume the smartmet libraries live next to this
+# checkout (../smartmet-library-*). Override the *_INC / *_LIB variables
+# from the command line to point at a different prefix, e.g. brew:
+#
+#   make -f Makefile.mac \
+#       MACGYVER_INC=$(brew --prefix smartmet-library-macgyver)/include/smartmet \
+#       MACGYVER_LIB=$(brew --prefix smartmet-library-macgyver)/lib  ...
+
+PREFIX     ?= /opt/homebrew
+
+# ---- Feature toggles --------------------------------------------------------
+WITH_GRID_FILES ?= 0
+
+# ---- Smartmet library locations --------------------------------------------
+MACGYVER_DIR    ?= $(CURDIR)/../smartmet-library-macgyver
+GIS_DIR         ?= $(CURDIR)/../smartmet-library-gis
+NEWBASE_DIR     ?= $(CURDIR)/../smartmet-library-newbase
+IMAGINE_DIR     ?= $(CURDIR)/../smartmet-library-imagine
+SMARTTOOLS_DIR  ?= $(CURDIR)/../smartmet-library-smarttools
+CALCULATOR_DIR  ?= $(CURDIR)/../smartmet-library-calculator
+
+MACGYVER_INC    ?= $(MACGYVER_DIR)
+MACGYVER_LIB    ?= $(MACGYVER_DIR)
+GIS_INC         ?= $(GIS_DIR)
+GIS_LIB         ?= $(GIS_DIR)
+NEWBASE_INC     ?= $(NEWBASE_DIR)
+NEWBASE_LIB     ?= $(NEWBASE_DIR)
+IMAGINE_INC     ?= $(IMAGINE_DIR)
+IMAGINE_LIB     ?= $(IMAGINE_DIR)
+SMARTTOOLS_INC  ?= $(SMARTTOOLS_DIR)
+SMARTTOOLS_LIB  ?= $(SMARTTOOLS_DIR)
+CALCULATOR_INC  ?= $(CALCULATOR_DIR)
+CALCULATOR_LIB  ?= $(CALCULATOR_DIR)
+
+# ---- Compiler ---------------------------------------------------------------
+CXX      ?= clang++
+CXXSTD   ?= -std=c++17
+OPT      ?= -O2
+WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations
+CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC
+DEFINES   = -DUNIX
+
+# Bake alternate default data / coastline dirs into qdless so brew installs
+# work without --palette-dir / --coastline-dir / cities1000.tsv flags.
+QDLESS_DATA_DIR  ?= $(PREFIX)/share/smartmet/qdless
+QDLESS_GSHHG_DIR ?= $(PREFIX)/share/gshhg-gmt-nc4
+DEFINES += -DQDLESS_DATA_DIR='"$(QDLESS_DATA_DIR)"'
+DEFINES += -DQDLESS_GSHHG_DIR='"$(QDLESS_GSHHG_DIR)"'
+
+ifeq ($(WITH_GRID_FILES),0)
+DEFINES += -DQDLESS_NO_GRID_FILES
+endif
+
+# ---- Brew dependency paths --------------------------------------------------
+BOOST_PREFIX     := $(shell brew --prefix boost)
+NCURSES_PREFIX   := $(shell brew --prefix ncurses)
+JSONCPP_PREFIX   := $(shell brew --prefix jsoncpp)
+NETCDFCXX_PREFIX := $(shell brew --prefix netcdf-cxx)
+NETCDF_PREFIX    := $(shell brew --prefix netcdf)
+DATE_PREFIX      := $(shell brew --prefix howard-hinnant-date)
+FMT_PREFIX       := $(shell brew --prefix fmt)
+DC_PREFIX        := $(shell brew --prefix double-conversion)
+
+INCLUDES := -Iinclude \
+            -I$(MACGYVER_INC) -I$(GIS_INC) -I$(NEWBASE_INC) \
+            -I$(IMAGINE_INC) -I$(SMARTTOOLS_INC) -I$(CALCULATOR_INC) \
+            -I$(BOOST_PREFIX)/include \
+            -I$(NCURSES_PREFIX)/include \
+            -I$(JSONCPP_PREFIX)/include \
+            -I$(NETCDFCXX_PREFIX)/include \
+            -I$(NETCDF_PREFIX)/include \
+            -I$(DATE_PREFIX)/include \
+            -I$(FMT_PREFIX)/include \
+            -I$(DC_PREFIX)/include
+
+LIBDIRS  := -L$(MACGYVER_LIB) -L$(GIS_LIB) -L$(NEWBASE_LIB) \
+            -L$(IMAGINE_LIB) -L$(SMARTTOOLS_LIB) -L$(CALCULATOR_LIB) \
+            -L$(BOOST_PREFIX)/lib \
+            -L$(NCURSES_PREFIX)/lib \
+            -L$(JSONCPP_PREFIX)/lib \
+            -L$(NETCDFCXX_PREFIX)/lib \
+            -L$(NETCDF_PREFIX)/lib \
+            -L$(DATE_PREFIX)/lib \
+            -L$(FMT_PREFIX)/lib \
+            -L$(DC_PREFIX)/lib
+
+LIBS     := -lsmartmet-smarttools -lsmartmet-calculator \
+            -lsmartmet-newbase -lsmartmet-imagine \
+            -lsmartmet-macgyver -lsmartmet-gis \
+            -lncursesw \
+            -ljsoncpp \
+            -lnetcdf-cxx4 -lnetcdf \
+            -lfmt \
+            -lboost_program_options \
+            -lboost_filesystem \
+            -lpthread
+
+# ---- File lists -------------------------------------------------------------
+SRCDIRS  := source
+HDRS     := $(wildcard include/*.h)
+SRCS     := $(wildcard source/*.cpp)
+ifeq ($(WITH_GRID_FILES),0)
+SRCS     := $(filter-out source/QdlessGridFilesSource.cpp,$(SRCS))
+endif
+MAINSRC  := main/qdless.cpp
+
+OBJDIR   := obj-mac
+OBJS     := $(patsubst source/%.cpp,$(OBJDIR)/%.o,$(SRCS)) $(OBJDIR)/qdless.o
+
+vpath %.cpp source main
+
+.PHONY: all clean install
+
+all: qdless
+
+qdless: $(OBJS)
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) $(LIBDIRS) -o $@ $^ $(LIBS)
+
+$(OBJDIR)/%.o: source/%.cpp | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -c -MD -MF $(@:.o=.d) -o $@ $<
+
+$(OBJDIR)/qdless.o: main/qdless.cpp | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -c -MD -MF $(@:.o=.d) -o $@ $<
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+clean:
+	rm -rf $(OBJDIR) qdless
+
+install: qdless
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -m 0755 qdless $(DESTDIR)$(PREFIX)/bin/qdless
+	install -d $(DESTDIR)$(QDLESS_DATA_DIR)/palettes
+	install -m 0644 cnf/qdless.conf $(DESTDIR)$(QDLESS_DATA_DIR)/qdless.conf
+	for f in palettes/*.json; do \
+	  install -m 0644 $$f $(DESTDIR)$(QDLESS_DATA_DIR)/palettes/; \
+	done
+	install -m 0644 data/cities1000.tsv $(DESTDIR)$(QDLESS_DATA_DIR)/cities1000.tsv
+
+-include $(OBJDIR)/*.d
