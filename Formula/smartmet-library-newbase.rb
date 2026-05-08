@@ -3,15 +3,9 @@ class SmartmetLibraryNewbase < Formula
   desc "FMI smartmet — querydata, projections, and core data structures"
   homepage "https://github.com/fmidev/smartmet-library-newbase"
   url "https://github.com/fmidev/smartmet-library-newbase.git",
-      revision: "68a53adf5805b6445386712c067c91d90bcc06c6"
-  version "2026.04.02"
+      revision: "574bd90bc526ec0b4e8d41b3d87a910eff4c7edf"
+  version "2026.05.08"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-newbase-2026.04.02"
-    rebuild 1
-    sha256 cellar: :any, arm64_tahoe: "db79807e2dba9ae7386b4aa942c5428578dcd153426db2e11655b1fdccc64bec"
-  end
 
   depends_on "boost"
   depends_on "double-conversion"

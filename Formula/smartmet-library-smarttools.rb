@@ -3,15 +3,9 @@ class SmartmetLibrarySmarttools < Formula
   desc "FMI smartmet — interpreter and helper utilities for newbase data"
   homepage "https://github.com/fmidev/smartmet-library-smarttools"
   url "https://github.com/fmidev/smartmet-library-smarttools.git",
-      revision: "a558a7f2774b71e36d40ddf2febbeac7e432e490"
-  version "2026.02.04"
+      revision: "04aeeb29917b76e497ba8e0cc5feed991405b951"
+  version "2026.05.08"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-smarttools-2026.02.04"
-    rebuild 1
-    sha256 cellar: :any, arm64_tahoe: "9d7691d1e7dc3dd0f710fe63ead280079567485ea3e0989dcf53918d141bc8e8"
-  end
 
   depends_on "boost"
   depends_on "double-conversion"

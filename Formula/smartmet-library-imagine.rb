@@ -3,15 +3,9 @@ class SmartmetLibraryImagine < Formula
   desc "FMI smartmet — image generation and rendering"
   homepage "https://github.com/fmidev/smartmet-library-imagine"
   url "https://github.com/fmidev/smartmet-library-imagine.git",
-      revision: "0e24d19f00cdfbf5557d766eb0d18fa6b9879994"
-  version "2026.02.04"
+      revision: "2800acf4aafeabf3b63098d55438c7df8144a22d"
+  version "2026.05.08"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-imagine-2026.02.04"
-    rebuild 1
-    sha256 cellar: :any, arm64_tahoe: "83d57c7979e814652ac0138511feb4fe636a51bad6c620fb170a1ebc2b5fc54c"
-  end
 
   depends_on "boost"
   depends_on "double-conversion"
