@@ -11,6 +11,11 @@ class GshhgGmtNc4 < Formula
   sha256 "9bb1a956fca0718c083bef842e625797535a00ce81f175df08b042c2a92cfe7f"
   license "LGPL-3.0-or-later"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/gshhg-gmt-nc4-2.3.7"
+    sha256 cellar: :any_skip_relocation, arm64_tahoe: "ed0e9b26bc0eaf9f7a8ffcf49ba1a2e6efb77aa898c3f3f9fcf6ad697d88e7c4"
+  end
+
   def install
     target = share/"gshhg-gmt-nc4"
     target.install Dir["binned_*.nc"]
