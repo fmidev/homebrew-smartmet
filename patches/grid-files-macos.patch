@@ -207,6 +207,79 @@ index a8b7703..e5d9ce5 100644
  
  
  namespace SmartMet
+diff --git a/src/grib2/implementation/SpectralGridDataRepresentationImpl.cpp b/src/grib2/implementation/SpectralGridDataRepresentationImpl.cpp
+index 622b371..f9dc026 100644
+--- a/src/grib2/implementation/SpectralGridDataRepresentationImpl.cpp
++++ b/src/grib2/implementation/SpectralGridDataRepresentationImpl.cpp
+@@ -166,6 +166,20 @@ void SpectralGridDataRepresentationImpl::decodeValues(Message *message,T::ParamV
+       if (mCcsdsFlags)
+         strm.flags = *mCcsdsFlags;
+ 
++      // ECC-1602: clear AEC_DATA_3BYTE so libaec writes native int sizes
++      // (matches dest's int32_t layout), and pin endianness to native.
++      // This mirrors eccodes' DataCcsdsPacking::modify_aec_flags(). The
++      // GRIB header may set these bits but they describe the canonical
++      // CCSDS encoding — at decode time we want the host's native layout.
++      strm.flags &= ~AEC_DATA_3BYTE;
++      const unsigned short kEndianTest = 1;
++      const bool kLittleEndian =
++          reinterpret_cast<const char*>(&kEndianTest)[0] == 1;
++      if (kLittleEndian)
++        strm.flags &= ~AEC_DATA_MSB;
++      else
++        strm.flags |= AEC_DATA_MSB;
++
+       strm.next_in = data;
+       strm.avail_in = dataSize;
+       strm.next_out = (unsigned char*)dest;
+@@ -233,7 +247,22 @@ void SpectralGridDataRepresentationImpl::decodeValues(Message *message,T::ParamV
+     int bytes = (bits_per_value-1)/8 + 1;
+     int bits = bytes*8;
+ 
++    // After clearing AEC_DATA_3BYTE above, libaec writes samples in native
++    // host-endian integers sized to bits_per_sample (1, 2, or 4 bytes). The
++    // BitArrayReader does MSB-first bit reads, which on a little-endian host
++    // would byte-swap each native int. Use native reads instead — same result
++    // on big-endian, correct decode on little-endian.
++    auto readNativeValue = [&](std::uint32_t i) -> std::uint32_t
++    {
++      if (bytes == 1) return reinterpret_cast<std::uint8_t*>(dest)[i];
++      if (bytes == 2) return reinterpret_cast<std::uint16_t*>(dest)[i];
++      // bytes == 3 path can't happen because we cleared AEC_DATA_3BYTE; libaec
++      // promoted any 17-24-bit packing to 4-byte ints.
++      return reinterpret_cast<std::uint32_t*>(dest)[i];
++    };
++
+     BitArrayReader bitArrayReader((unsigned char*)dest,outputBytes*8);
++    (void)bitArrayReader;  // kept for future packings that genuinely need bit-level reads
+ 
+     if (bitmapSizeInBytes > 0)
+     {
+@@ -243,12 +272,12 @@ void SpectralGridDataRepresentationImpl::decodeValues(Message *message,T::ParamV
+         bmap = &tmp;
+ 
+       BitArrayReader bitmapReader(bmap,bitmapSizeInBytes*8);
++      std::uint32_t srcIdx = 0;
+       for (std::uint32_t i = 0; i < numOfValues; i++)
+       {
+         if (bitmapReader.readBit())
+         {
+-          uint value = 0;
+-          bitArrayReader.readBits(bits,value);
++          std::uint32_t value = readNativeValue(srcIdx++);
+           double val = RDfac + value * EDfac;
+           decodedValues.emplace_back(val);
+         }
+@@ -262,8 +291,7 @@ void SpectralGridDataRepresentationImpl::decodeValues(Message *message,T::ParamV
+     {
+       for (std::uint32_t i = 0; i < numOfValues; i++)
+       {
+-        uint value = 0;
+-        bitArrayReader.readBits(bits,value);
++        std::uint32_t value = readNativeValue(i);
+         double val = RDfac + value * EDfac;
+         decodedValues.emplace_back(val);
+       }
 diff --git a/src/grid/GridFile.cpp b/src/grid/GridFile.cpp
 index 67cea4b..7f03c81 100644
 --- a/src/grid/GridFile.cpp

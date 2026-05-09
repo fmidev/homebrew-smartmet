@@ -1,22 +1,18 @@
 # Portable Makefile for building smartmet-qdless on macOS
 #
 # Required brew packages:
-#   brew install boost ncurses jsoncpp netcdf-cxx \
+#   brew install boost ncurses jsoncpp netcdf-cxx webp gdal fmt \
+#                howard-hinnant-date double-conversion \
 #                fmidev/smartmet/smartmet-library-macgyver \
 #                fmidev/smartmet/smartmet-library-gis \
 #                fmidev/smartmet/smartmet-library-newbase \
-#                fmidev/smartmet/smartmet-library-imagine \
-#                fmidev/smartmet/smartmet-library-smarttools \
-#                fmidev/smartmet/smartmet-library-calculator
-#
-# Toggles:
-#   WITH_GRID_FILES=1  enable GRIB / NetCDF input via smartmet-library-grid-files
-#                      (default OFF — grid-files isn't in Homebrew yet; the
-#                       resulting binary handles QueryData/.sqd only)
+#                fmidev/smartmet/smartmet-library-spine \
+#                fmidev/smartmet/smartmet-library-trax \
+#                fmidev/smartmet/smartmet-library-grid-files
 #
 # Sibling-build defaults assume the smartmet libraries live next to this
 # checkout (../smartmet-library-*). Override the *_INC / *_LIB variables
-# from the command line to point at a different prefix, e.g. brew:
+# from the command line to point at brew prefixes:
 #
 #   make -f Makefile.mac \
 #       MACGYVER_INC=$(brew --prefix smartmet-library-macgyver)/include/smartmet \
@@ -24,16 +20,16 @@
 
 PREFIX     ?= /opt/homebrew
 
-# ---- Feature toggles --------------------------------------------------------
-WITH_GRID_FILES ?= 0
-
 # ---- Smartmet library locations --------------------------------------------
 MACGYVER_DIR    ?= $(CURDIR)/../smartmet-library-macgyver
 GIS_DIR         ?= $(CURDIR)/../smartmet-library-gis
 NEWBASE_DIR     ?= $(CURDIR)/../smartmet-library-newbase
-IMAGINE_DIR     ?= $(CURDIR)/../smartmet-library-imagine
-SMARTTOOLS_DIR  ?= $(CURDIR)/../smartmet-library-smarttools
-CALCULATOR_DIR  ?= $(CURDIR)/../smartmet-library-calculator
+# spine + trax are only needed for the rpath / runtime-link side — they are
+# transitive deps of grid-files's dylib. qdless's own source code doesn't
+# include any spine/trax headers any more.
+SPINE_DIR       ?= $(CURDIR)/../smartmet-library-spine
+TRAX_DIR        ?= $(CURDIR)/../smartmet-library-trax
+GRID_FILES_DIR  ?= $(CURDIR)/../smartmet-library-grid-files
 
 MACGYVER_INC    ?= $(MACGYVER_DIR)
 MACGYVER_LIB    ?= $(MACGYVER_DIR)
@@ -41,12 +37,16 @@ GIS_INC         ?= $(GIS_DIR)
 GIS_LIB         ?= $(GIS_DIR)
 NEWBASE_INC     ?= $(NEWBASE_DIR)
 NEWBASE_LIB     ?= $(NEWBASE_DIR)
-IMAGINE_INC     ?= $(IMAGINE_DIR)
-IMAGINE_LIB     ?= $(IMAGINE_DIR)
-SMARTTOOLS_INC  ?= $(SMARTTOOLS_DIR)
-SMARTTOOLS_LIB  ?= $(SMARTTOOLS_DIR)
-CALCULATOR_INC  ?= $(CALCULATOR_DIR)
-CALCULATOR_LIB  ?= $(CALCULATOR_DIR)
+SPINE_INC       ?= $(SPINE_DIR)
+SPINE_LIB       ?= $(SPINE_DIR)
+TRAX_INC        ?= $(TRAX_DIR)
+TRAX_LIB        ?= $(TRAX_DIR)
+# grid-files headers ship as <grid-files/...> — the include dir must be the
+# parent of grid-files/. The brew layout puts headers under
+# .../include/smartmet/grid-files/. So GRID_FILES_INC should resolve to
+# .../include/smartmet for brew, or the source root for sibling builds.
+GRID_FILES_INC  ?= $(GRID_FILES_DIR)
+GRID_FILES_LIB  ?= $(GRID_FILES_DIR)
 
 # ---- Compiler ---------------------------------------------------------------
 CXX      ?= clang++
@@ -54,32 +54,34 @@ CXXSTD   ?= -std=c++17
 OPT      ?= -O2
 WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations
 CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC
-DEFINES   = -DUNIX
+# grid-files transitively pulls _DARWIN_C_SOURCE-gated typedefs (uint, …) into
+# its public headers; mirror its DEFINES here so we get those typedefs too.
+DEFINES   = -DUNIX -D_DARWIN_C_SOURCE -DUSE_UNSTABLE_GEOS_CPP_API
 
-# Bake alternate default data / coastline dirs into qdless so brew installs
-# work without --palette-dir / --coastline-dir / cities1000.tsv flags.
+# Bake the default data / coastline dirs into qdless so brew installs work
+# without --palette-dir / --coastline-dir / cities1000.tsv flags.
 QDLESS_DATA_DIR  ?= $(PREFIX)/share/smartmet/qdless
 QDLESS_GSHHG_DIR ?= $(PREFIX)/share/gshhg-gmt-nc4
 DEFINES += -DQDLESS_DATA_DIR='"$(QDLESS_DATA_DIR)"'
 DEFINES += -DQDLESS_GSHHG_DIR='"$(QDLESS_GSHHG_DIR)"'
 
-ifeq ($(WITH_GRID_FILES),0)
-DEFINES += -DQDLESS_NO_GRID_FILES
-endif
-
 # ---- Brew dependency paths --------------------------------------------------
-BOOST_PREFIX     := $(shell brew --prefix boost)
-NCURSES_PREFIX   := $(shell brew --prefix ncurses)
-JSONCPP_PREFIX   := $(shell brew --prefix jsoncpp)
-NETCDFCXX_PREFIX := $(shell brew --prefix netcdf-cxx)
-NETCDF_PREFIX    := $(shell brew --prefix netcdf)
-DATE_PREFIX      := $(shell brew --prefix howard-hinnant-date)
-FMT_PREFIX       := $(shell brew --prefix fmt)
-DC_PREFIX        := $(shell brew --prefix double-conversion)
+# Default to `brew --prefix` for sibling builds. The brew sandbox blocks
+# `brew` invocations during builds, so the formula passes these as overrides.
+BOOST_PREFIX     ?= $(shell brew --prefix boost)
+NCURSES_PREFIX   ?= $(shell brew --prefix ncurses)
+JSONCPP_PREFIX   ?= $(shell brew --prefix jsoncpp)
+NETCDFCXX_PREFIX ?= $(shell brew --prefix netcdf-cxx)
+NETCDF_PREFIX    ?= $(shell brew --prefix netcdf)
+DATE_PREFIX      ?= $(shell brew --prefix howard-hinnant-date)
+FMT_PREFIX       ?= $(shell brew --prefix fmt)
+DC_PREFIX        ?= $(shell brew --prefix double-conversion)
+GDAL_PREFIX      ?= $(shell brew --prefix gdal)
+WEBP_PREFIX      ?= $(shell brew --prefix webp)
 
 INCLUDES := -Iinclude \
             -I$(MACGYVER_INC) -I$(GIS_INC) -I$(NEWBASE_INC) \
-            -I$(IMAGINE_INC) -I$(SMARTTOOLS_INC) -I$(CALCULATOR_INC) \
+            -I$(GRID_FILES_INC) -I$(SPINE_INC) -I$(TRAX_INC) \
             -I$(BOOST_PREFIX)/include \
             -I$(NCURSES_PREFIX)/include \
             -I$(JSONCPP_PREFIX)/include \
@@ -87,10 +89,12 @@ INCLUDES := -Iinclude \
             -I$(NETCDF_PREFIX)/include \
             -I$(DATE_PREFIX)/include \
             -I$(FMT_PREFIX)/include \
-            -I$(DC_PREFIX)/include
+            -I$(DC_PREFIX)/include \
+            -I$(GDAL_PREFIX)/include \
+            -I$(WEBP_PREFIX)/include
 
 LIBDIRS  := -L$(MACGYVER_LIB) -L$(GIS_LIB) -L$(NEWBASE_LIB) \
-            -L$(IMAGINE_LIB) -L$(SMARTTOOLS_LIB) -L$(CALCULATOR_LIB) \
+            -L$(GRID_FILES_LIB) -L$(SPINE_LIB) -L$(TRAX_LIB) \
             -L$(BOOST_PREFIX)/lib \
             -L$(NCURSES_PREFIX)/lib \
             -L$(JSONCPP_PREFIX)/lib \
@@ -98,26 +102,38 @@ LIBDIRS  := -L$(MACGYVER_LIB) -L$(GIS_LIB) -L$(NEWBASE_LIB) \
             -L$(NETCDF_PREFIX)/lib \
             -L$(DATE_PREFIX)/lib \
             -L$(FMT_PREFIX)/lib \
-            -L$(DC_PREFIX)/lib
+            -L$(DC_PREFIX)/lib \
+            -L$(GDAL_PREFIX)/lib \
+            -L$(WEBP_PREFIX)/lib \
+            -Wl,-rpath,$(MACGYVER_LIB) -Wl,-rpath,$(GIS_LIB) \
+            -Wl,-rpath,$(NEWBASE_LIB) \
+            -Wl,-rpath,$(GRID_FILES_LIB) -Wl,-rpath,$(SPINE_LIB) \
+            -Wl,-rpath,$(TRAX_LIB)
 
-LIBS     := -lsmartmet-smarttools -lsmartmet-calculator \
-            -lsmartmet-newbase -lsmartmet-imagine \
+# Smartmet libs first (they pull in symbols their dependents need).
+# `-lrt` is Linux-only (clock_gettime is in libSystem on macOS); `-ltinfo`
+# / `-lpanelw` aren't needed because Homebrew ncursesw bundles termcap and
+# we don't use panel.h. smarttools / calculator are dropped — qdless's own
+# source code doesn't reference either since 12e7e15. imagine is dropped
+# in 218d7b0 (PNG export now goes through GDAL's PNG driver).
+LIBS     := -lsmartmet-grid-files -lsmartmet-spine -lsmartmet-trax \
+            -lsmartmet-newbase \
             -lsmartmet-macgyver -lsmartmet-gis \
             -lncursesw \
             -ljsoncpp \
             -lnetcdf-cxx4 -lnetcdf \
+            -lgdal \
+            -lwebpdemux -lwebp \
             -lfmt \
             -lboost_program_options \
             -lboost_filesystem \
+            -lboost_regex \
+            -lboost_iostreams \
+            -lboost_thread \
             -lpthread
 
 # ---- File lists -------------------------------------------------------------
-SRCDIRS  := source
-HDRS     := $(wildcard include/*.h)
 SRCS     := $(wildcard source/*.cpp)
-ifeq ($(WITH_GRID_FILES),0)
-SRCS     := $(filter-out source/QdlessGridFilesSource.cpp,$(SRCS))
-endif
 MAINSRC  := main/qdless.cpp
 
 OBJDIR   := obj-mac

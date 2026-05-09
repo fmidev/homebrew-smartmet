@@ -1,8 +1,8 @@
 diff --git a/include/QdlessApp.h b/include/QdlessApp.h
-index cbf8f7d..e17bdcb 100644
+index 4397dcd..9a3f083 100644
 --- a/include/QdlessApp.h
 +++ b/include/QdlessApp.h
-@@ -14,12 +14,21 @@
+@@ -14,6 +14,15 @@
  
  namespace Qdless
  {
@@ -17,21 +17,51 @@ index cbf8f7d..e17bdcb 100644
 +
  struct Options
  {
-   std::string filename;
+   // Single-file convenience. Either `filename` or `filenames` (multi) is
+@@ -30,9 +39,9 @@ struct Options
+   std::string pgConn;
+   std::string pgSchema;
+   std::string pgTable;
 -  std::string paletteDir = "/usr/share/smartmet/qdless/palettes";
 -  std::string configFile = "/usr/share/smartmet/qdless/qdless.conf";
 -  std::string coastlineDir = "/usr/share/gshhg-gmt-nc4";
 +  std::string paletteDir = QDLESS_DATA_DIR "/palettes";
 +  std::string configFile = QDLESS_DATA_DIR "/qdless.conf";
 +  std::string coastlineDir = QDLESS_GSHHG_DIR;
-   std::string parameterOverride;  // empty -> use first parameter
-   std::string paletteOverride;    // empty -> resolve via config / built-in
-   int timeIndex = 0;              // 0-based; -1 means last
+   // Parameters to launch with. Empty -> use first parameter in the file.
+   // 1 entry -> Single layout. 2 -> Side. 3 or 4 -> Quad. >4 is rejected.
+   // For 3 parameters in Quad layout, the 4th panel clones the first.
+diff --git a/source/Hdf5File.cpp b/source/Hdf5File.cpp
+index 7479c92..69ade93 100644
+--- a/source/Hdf5File.cpp
++++ b/source/Hdf5File.cpp
+@@ -54,8 +54,10 @@ try
+     if (!gdal_ds)
+         throw std::runtime_error("GDAL failed to open HDF5 file: " + path);
+ 
+-    // Load all attribute metadata (GDAL flattens HDF5 group attributes)
+-    char** papszMD = gdal_ds->GetMetadata("");
++    // Load all attribute metadata (GDAL flattens HDF5 group attributes).
++    // GDAL >= 3.13 changed GetMetadata's return type from `char**` to
++    // `CSLConstList` (`const char *const *`). `auto` binds either.
++    auto papszMD = gdal_ds->GetMetadata("");
+     if (papszMD != nullptr)
+     {
+         for (int i = 0; papszMD[i] != nullptr; ++i)
+@@ -68,7 +70,7 @@ try
+     }
+ 
+     // Load subdatasets (multi-dataset HDF5 files like PVOL)
+-    char** papszSub = gdal_ds->GetMetadata("SUBDATASETS");
++    auto papszSub = gdal_ds->GetMetadata("SUBDATASETS");
+     if (papszSub != nullptr)
+     {
+         for (int i = 0; papszSub[i] != nullptr; ++i)
 diff --git a/source/QdlessApp.cpp b/source/QdlessApp.cpp
-index 1e1e2a7..3106efd 100644
+index 3046d19..54540ae 100644
 --- a/source/QdlessApp.cpp
 +++ b/source/QdlessApp.cpp
-@@ -787,7 +787,7 @@ bool App::ensureCityIndex() const
+@@ -1329,7 +1329,7 @@ bool App::ensureCityIndex() const
    itsCityIndexAttempted = true;
  
    std::vector<std::filesystem::path> candidates{
@@ -40,30 +70,31 @@ index 1e1e2a7..3106efd 100644
    };
    try
    {
-diff --git a/source/QdlessDataSource.cpp b/source/QdlessDataSource.cpp
-index 7d1685e..a21c33f 100644
---- a/source/QdlessDataSource.cpp
-+++ b/source/QdlessDataSource.cpp
-@@ -1,6 +1,8 @@
- #include "QdlessDataSource.h"
- 
-+#ifndef QDLESS_NO_GRID_FILES
- #include "QdlessGridFilesSource.h"
-+#endif
- #include "QdlessQueryDataSource.h"
- 
- #include <fstream>
-@@ -43,7 +45,13 @@ std::unique_ptr<DataSource> DataSource::open(const std::string& filename)
-       return std::make_unique<QueryDataSource>(filename);
-     case FileKind::kGrib:
-     case FileKind::kNetCDF:
-+#ifdef QDLESS_NO_GRID_FILES
-+      throw std::runtime_error(
-+          "GRIB / NetCDF input requires a build with smartmet-library-grid-files; "
-+          "this binary supports QueryData (.sqd) only");
-+#else
-       return std::make_unique<GridFilesSource>(filename);
-+#endif
-     case FileKind::kUnknown:
-       break;
-   }
+diff --git a/source/QdlessGridFilesSource.cpp b/source/QdlessGridFilesSource.cpp
+index 739841a..e0fbc4c 100644
+--- a/source/QdlessGridFilesSource.cpp
++++ b/source/QdlessGridFilesSource.cpp
+@@ -53,12 +53,17 @@ void GridFilesSource::ensureGridDef()
+     return;
+   // Search common locations for grid-files.conf. The library's parameter
+   // mapping CSVs live in the same dir; the conf references them via
+-  // "%(DIR)/...".
+-  const std::vector<std::filesystem::path> candidates = {
+-      "/usr/share/smartmet/library/grid-files/grid-files.conf",
+-      "/usr/share/smartmet/grid-files/grid-files.conf",
+-      "/usr/share/smartmet/test/grid/library/grid-files.conf",
+-  };
++  // "%(DIR)/...". The QDLESS_GRID_FILES_CONF env var, when set, takes
++  // precedence over every other candidate.
++  std::vector<std::filesystem::path> candidates;
++  if (const char* env = std::getenv("QDLESS_GRID_FILES_CONF"))
++    candidates.emplace_back(env);
++  candidates.insert(candidates.end(),
++                    {"/usr/share/smartmet/library/grid-files/grid-files.conf",
++                     "/usr/share/smartmet/grid-files/grid-files.conf",
++                     "/usr/share/smartmet/test/grid/library/grid-files.conf",
++                     // Homebrew layout — installed by smartmet-library-grid-files.
++                     "/opt/homebrew/share/smartmet/grid-files/grid-files.conf"});
+   for (const auto& p : candidates)
+   {
+     if (std::filesystem::exists(p))

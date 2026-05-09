@@ -4,13 +4,8 @@ class SmartmetLibraryGridFiles < Formula
   homepage "https://github.com/fmidev/smartmet-library-grid-files"
   url "https://github.com/fmidev/smartmet-library-grid-files.git",
       revision: "60b95067c09fb9b268e1432147cd553007171d89"
-  version "2026.05.08"
+  version "2026.05.08.1"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-grid-files-2026.05.08"
-    sha256 cellar: :any, arm64_tahoe: "cc5482e43797df4f55e2ea452d796cffe6b66ef7bb53aa93b583adf67dafc281"
-  end
 
   # macOS port note: Linux's userfaultfd memory-mapper path is disabled via
   # SMARTMET_NO_USERFAULTFD; local files still work via boost::iostreams::

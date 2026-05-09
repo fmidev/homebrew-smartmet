@@ -4,13 +4,8 @@ class SmartmetLibrarySmarttools < Formula
   homepage "https://github.com/fmidev/smartmet-library-smarttools"
   url "https://github.com/fmidev/smartmet-library-smarttools.git",
       revision: "04aeeb29917b76e497ba8e0cc5feed991405b951"
-  version "2026.05.08"
+  version "2026.05.10"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-smarttools-2026.05.08"
-    sha256 cellar: :any, arm64_tahoe: "a7a6e1896c16bec8a3913fd394511aa04e21c13f058ebff39ddf61f56cddafab"
-  end
 
   depends_on "boost"
   depends_on "double-conversion"
