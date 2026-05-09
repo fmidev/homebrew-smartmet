@@ -7,6 +7,11 @@ class SmartmetLibraryNewbase < Formula
   version "2026.05.08"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-newbase-2026.05.08"
+    sha256 cellar: :any, arm64_tahoe: "0c0ee9e139a5f9e1e879678fdc1b87033674f96c513253f425072e10e9b0d24f"
+  end
+
   depends_on "boost"
   depends_on "double-conversion"
   depends_on "fmidev/smartmet/smartmet-library-gis"
