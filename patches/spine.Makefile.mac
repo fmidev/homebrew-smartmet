@@ -1,0 +1,133 @@
+# Portable Makefile for building smartmet-library-spine on macOS
+#
+# Required brew packages:
+#   brew install boost fmt jsoncpp libconfig mariadb-connector-c \
+#                gdal double-conversion howard-hinnant-date \
+#                fmidev/smartmet/smartmet-library-macgyver \
+#                fmidev/smartmet/smartmet-library-newbase
+#
+# Audit notes:
+#   - icu-i18n is in upstream REQUIRES but unused in spine source — dropped
+#   - opentelemetry-cpp is auto-detected via pkg-config; absent on macOS, so
+#     the SMARTMET_SPINE_OPENTELEMETRY block stays inactive (no work needed)
+#   - The single mysql_library_init() call in Reactor.cpp is the only mariadb
+#     touchpoint (used by downstream plugins); we pull mariadb-connector-c
+#     for <mysql.h>
+#
+# Sibling-build defaults assume the smartmet libraries live next to this
+# checkout (../smartmet-library-*). Override the *_INC / *_LIB variables
+# to point at brew prefixes.
+
+SUBNAME = spine
+LIB     = smartmet-$(SUBNAME)
+
+PREFIX     ?= /opt/homebrew
+
+# ---- Smartmet library locations --------------------------------------------
+MACGYVER_DIR ?= $(CURDIR)/../smartmet-library-macgyver
+NEWBASE_DIR  ?= $(CURDIR)/../smartmet-library-newbase
+GIS_DIR      ?= $(CURDIR)/../smartmet-library-gis
+
+MACGYVER_INC ?= $(MACGYVER_DIR)
+MACGYVER_LIB ?= $(MACGYVER_DIR)
+NEWBASE_INC  ?= $(NEWBASE_DIR)
+NEWBASE_LIB  ?= $(NEWBASE_DIR)
+GIS_INC      ?= $(GIS_DIR)
+GIS_LIB      ?= $(GIS_DIR)
+
+# ---- Compiler ---------------------------------------------------------------
+CXX      ?= clang++
+CXXSTD   ?= -std=c++17
+OPT      ?= -O2
+WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations \
+            -Wno-pedantic
+CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC
+DEFINES   = -DUNIX -D_REENTRANT -DBOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
+
+# ---- Brew dependency paths --------------------------------------------------
+BOOST_PREFIX     := $(shell brew --prefix boost)
+FMT_PREFIX       := $(shell brew --prefix fmt)
+JSONCPP_PREFIX   := $(shell brew --prefix jsoncpp)
+LIBCONFIG_PREFIX := $(shell brew --prefix libconfig)
+MARIADB_PREFIX   := $(shell brew --prefix mariadb-connector-c)
+GDAL_PREFIX      := $(shell brew --prefix gdal)
+DC_PREFIX        := $(shell brew --prefix double-conversion)
+DATE_PREFIX      := $(shell brew --prefix howard-hinnant-date)
+OPENSSL_PREFIX   := $(shell brew --prefix openssl@3)
+PQXX_PREFIX      := $(shell brew --prefix libpqxx)
+PQ_PREFIX        := $(shell brew --prefix libpq)
+
+INCLUDES := -I. -Ispine \
+            -I$(MACGYVER_INC) \
+            -I$(NEWBASE_INC) \
+            -I$(GIS_INC) \
+            -I$(BOOST_PREFIX)/include \
+            -I$(FMT_PREFIX)/include \
+            -I$(JSONCPP_PREFIX)/include \
+            -I$(LIBCONFIG_PREFIX)/include \
+            -I$(MARIADB_PREFIX)/include/mariadb \
+            -I$(GDAL_PREFIX)/include \
+            -I$(DC_PREFIX)/include \
+            -I$(DATE_PREFIX)/include \
+            -I$(OPENSSL_PREFIX)/include \
+            -I$(PQXX_PREFIX)/include \
+            -I$(PQ_PREFIX)/include
+
+LIBDIRS  := -L$(MACGYVER_LIB) \
+            -L$(NEWBASE_LIB) \
+            -L$(GIS_LIB) \
+            -L$(BOOST_PREFIX)/lib \
+            -L$(FMT_PREFIX)/lib \
+            -L$(JSONCPP_PREFIX)/lib \
+            -L$(LIBCONFIG_PREFIX)/lib \
+            -L$(MARIADB_PREFIX)/lib \
+            -L$(GDAL_PREFIX)/lib \
+            -L$(DC_PREFIX)/lib \
+            -L$(DATE_PREFIX)/lib \
+            -L$(OPENSSL_PREFIX)/lib \
+            -L$(PQXX_PREFIX)/lib \
+            -L$(PQ_PREFIX)/lib
+
+LIBS     := -lsmartmet-newbase -lsmartmet-macgyver -lsmartmet-gis \
+            -ldouble-conversion \
+            -lboost_regex -lboost_timer -lboost_chrono -lboost_thread \
+            -lboost_program_options -lboost_locale -lboost_iostreams \
+            -lboost_filesystem \
+            -lfmt -lconfig++ -ljsoncpp -lgdal \
+            -lmariadb \
+            -lcrypto \
+            -lpqxx -lpq \
+            -lpthread
+
+# ---- Sources ----------------------------------------------------------------
+SRCS := $(wildcard spine/*.cpp)
+OBJS := $(patsubst spine/%.cpp,obj-mac/%.o,$(SRCS))
+
+# ---- Library output ---------------------------------------------------------
+DYLIB := lib$(LIB).dylib
+ALIB  := lib$(LIB).a
+
+.PHONY: all clean install
+
+all: $(ALIB) $(DYLIB)
+
+obj-mac/%.o: spine/%.cpp
+	@mkdir -p obj-mac
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(ALIB): $(OBJS)
+	$(AR) rcs $@ $(OBJS)
+
+$(DYLIB): $(OBJS)
+	$(CXX) -dynamiclib -install_name @rpath/$(DYLIB) \
+	    $(LIBDIRS) -o $@ $(OBJS) $(LIBS)
+
+install: all
+	@mkdir -p $(DESTDIR)$(PREFIX)/lib $(DESTDIR)$(PREFIX)/include/smartmet/$(SUBNAME)
+	cp $(ALIB) $(DYLIB) $(DESTDIR)$(PREFIX)/lib/
+	cp spine/*.h $(DESTDIR)$(PREFIX)/include/smartmet/$(SUBNAME)/
+
+clean:
+	rm -rf obj-mac $(ALIB) $(DYLIB)
+
+-include $(OBJS:.o=.d)

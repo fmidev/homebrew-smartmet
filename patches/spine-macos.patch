@@ -1,0 +1,86 @@
+diff --git a/spine/Backtrace.cpp b/spine/Backtrace.cpp
+index bdc31e6..3ae3501 100644
+--- a/spine/Backtrace.cpp
++++ b/spine/Backtrace.cpp
+@@ -1,11 +1,19 @@
+ #include "Backtrace.h"
+-#include <backtrace.h>
+ 
+ #include <iostream>
+ #include <sstream>
+ #include <cxxabi.h>
+ #include <fmt/format.h>
+ 
++#ifdef __APPLE__
++// macOS doesn't ship libbacktrace; use the system's <execinfo.h> backtrace()
++// which gives addresses + best-effort symbol names but no file/line info.
++#include <execinfo.h>
++#include <cstdlib>
++#else
++#include <backtrace.h>
++#endif
++
+ using SmartMet::Spine::Backtrace;
+ 
+ Backtrace Backtrace::instance;
+@@ -14,12 +22,16 @@ thread_local Backtrace::Data Backtrace::data;
+ 
+ Backtrace::Backtrace()
+ {
++#ifdef __APPLE__
++    bt_state = nullptr;  // execinfo backtrace() is stateless
++#else
+     bt_state = backtrace_create_state(
+         nullptr,     // No use to specify file name here
+         1,           // Can be used from several threads
+         &Backtrace::backtrace_error_callback,
+         this         // Link to this instance
+     );
++#endif
+ }
+ 
+ Backtrace::~Backtrace() = default;
+@@ -31,12 +43,30 @@ std::string Backtrace::make_backtrace()  noexcept
+         Backtrace::data.level = 0;
+         Backtrace::data.out.str("");
+ 
++#ifdef __APPLE__
++        constexpr int kMaxFrames = 128;
++        void* frames[kMaxFrames];
++        const int n = ::backtrace(frames, kMaxFrames);
++        char** symbols = ::backtrace_symbols(frames, n);
++        // Skip frame 0 (this method) to match the libbacktrace path.
++        for (int i = 1; i < n; ++i)
++        {
++            const std::size_t level = ++Backtrace::data.level;
++            Backtrace::data.out << "[" << fmt::format("{:04}", level) << "]:\n"
++                                << "    Address: " << fmt::format("{:x}",
++                                       reinterpret_cast<std::uintptr_t>(frames[i])) << '\n';
++            if (symbols && symbols[i])
++                Backtrace::data.out << "    Symbol:  " << symbols[i] << '\n';
++        }
++        std::free(symbols);
++#else
+         backtrace_full(
+             reinterpret_cast<backtrace_state*>(instance.bt_state),
+             1,  // Skip one frame (this method)
+             &Backtrace::backtrace_full_callback,
+             &Backtrace::backtrace_error_callback,
+             nullptr);
++#endif
+     }
+     catch (...)
+     {
+@@ -45,6 +75,7 @@ std::string Backtrace::make_backtrace()  noexcept
+     return Backtrace::data.out.str();
+ }
+ 
++#ifndef __APPLE__
+ void Backtrace::backtrace_error_callback(void* data, const char* msg, int errnum) noexcept
+ try
+ {
+@@ -101,3 +132,4 @@ catch (...)
+     // Ignore errors in the backtrace callback
+     return 0;
+ }
++#endif  // !__APPLE__

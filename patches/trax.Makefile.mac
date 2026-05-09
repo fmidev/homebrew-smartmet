@@ -1,0 +1,84 @@
+# Portable Makefile for building smartmet-library-trax on macOS
+#
+# Required brew packages:
+#   brew install boost fmt gdal geos \
+#                fmidev/smartmet/smartmet-library-macgyver
+#
+# Audit notes (vs upstream Makefile):
+#   - Zero macOS-isms in source — no patches required
+#   - REQUIRES = gdal geos fmt → all available via brew
+#   - Single smartmet lib dep: macgyver
+#   - Boost is header-only here (geometry, math) — no -lboost_* needed
+
+SUBNAME = trax
+LIB     = smartmet-$(SUBNAME)
+
+PREFIX     ?= /opt/homebrew
+
+# ---- Smartmet library locations --------------------------------------------
+MACGYVER_DIR ?= $(CURDIR)/../smartmet-library-macgyver
+MACGYVER_INC ?= $(MACGYVER_DIR)
+MACGYVER_LIB ?= $(MACGYVER_DIR)
+
+# ---- Compiler ---------------------------------------------------------------
+CXX      ?= clang++
+CXXSTD   ?= -std=c++17
+OPT      ?= -O3
+WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations
+CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC
+DEFINES   = -DUNIX -D_REENTRANT -DUSE_UNSTABLE_GEOS_CPP_API
+
+# ---- Brew dependency paths --------------------------------------------------
+BOOST_PREFIX := $(shell brew --prefix boost)
+FMT_PREFIX   := $(shell brew --prefix fmt)
+GDAL_PREFIX  := $(shell brew --prefix gdal)
+GEOS_PREFIX  := $(shell brew --prefix geos)
+
+INCLUDES := -I. -Itrax \
+            -I$(MACGYVER_INC) \
+            -I$(MACGYVER_INC)/smartmet \
+            -I$(BOOST_PREFIX)/include \
+            -I$(FMT_PREFIX)/include \
+            -I$(GDAL_PREFIX)/include \
+            -I$(GEOS_PREFIX)/include
+
+LIBDIRS  := -L$(MACGYVER_LIB) \
+            -L$(BOOST_PREFIX)/lib \
+            -L$(FMT_PREFIX)/lib \
+            -L$(GDAL_PREFIX)/lib \
+            -L$(GEOS_PREFIX)/lib
+
+LIBS     := -lsmartmet-macgyver -lfmt -lgdal -lgeos -lpthread
+
+# ---- Sources ----------------------------------------------------------------
+SRCS := $(wildcard trax/*.cpp)
+OBJS := $(patsubst trax/%.cpp,obj-mac/%.o,$(SRCS))
+
+# ---- Library output ---------------------------------------------------------
+DYLIB := lib$(LIB).dylib
+ALIB  := lib$(LIB).a
+
+.PHONY: all clean install
+
+all: $(ALIB) $(DYLIB)
+
+obj-mac/%.o: trax/%.cpp
+	@mkdir -p obj-mac
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(ALIB): $(OBJS)
+	$(AR) rcs $@ $(OBJS)
+
+$(DYLIB): $(OBJS)
+	$(CXX) -dynamiclib -install_name @rpath/$(DYLIB) \
+	    $(LIBDIRS) -o $@ $(OBJS) $(LIBS)
+
+install: all
+	@mkdir -p $(DESTDIR)$(PREFIX)/lib $(DESTDIR)$(PREFIX)/include/smartmet/$(SUBNAME)
+	cp $(ALIB) $(DYLIB) $(DESTDIR)$(PREFIX)/lib/
+	cp trax/*.h $(DESTDIR)$(PREFIX)/include/smartmet/$(SUBNAME)/
+
+clean:
+	rm -rf obj-mac $(ALIB) $(DYLIB)
+
+-include $(OBJS:.o=.d)

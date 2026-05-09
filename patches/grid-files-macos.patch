@@ -1,0 +1,223 @@
+diff --git a/src/common/AdditionalParameters.cpp b/src/common/AdditionalParameters.cpp
+index abb5437..210eda5 100644
+--- a/src/common/AdditionalParameters.cpp
++++ b/src/common/AdditionalParameters.cpp
+@@ -348,7 +348,9 @@ bool AdditionalParameters::getParameterValueByLocationAndTime(
+     {
+       Fmi::DateTime time_t_epoch(Fmi::Date(1970, 1, 1));
+       Fmi::TimeDuration diff = queryTime.utc_time() - time_t_epoch;
+-      value = Fmi::to_string(diff.total_seconds());
++      // macOS: int64_t is long long, not long — cast to long to disambiguate
++      // Fmi::to_string overloads (which cover int / long / unsigned*).
++      value = Fmi::to_string(static_cast<long>(diff.total_seconds()));
+       return true;
+     }
+ 
+@@ -536,7 +538,7 @@ bool AdditionalParameters::getParameterValueByLocationAndTime(
+ 
+     if (param == "hour")
+     {
+-      value = Fmi::to_string(queryTime.local_time().time_of_day().hours());
++      value = Fmi::to_string(static_cast<long>(queryTime.local_time().time_of_day().hours()));
+       return true;
+     }
+ 
+diff --git a/src/common/GeneralFunctions.h b/src/common/GeneralFunctions.h
+index 0d80a97..255e7be 100644
+--- a/src/common/GeneralFunctions.h
++++ b/src/common/GeneralFunctions.h
+@@ -117,6 +117,19 @@ std::string toString(std::uint8_t value);
+ std::string toString(std::uint16_t value);
+ std::string toString(std::uint32_t value);
+ std::string toString(std::uint64_t value);
++#ifdef __APPLE__
++// macOS arm64: size_t = unsigned long, ssize_t = long, neither of which
++// equals any std::{u,}intN_t exactly. Add explicit overloads so existing
++// call sites that pass size_t / long / unsigned long are unambiguous.
++inline std::string toString(long value)
++{
++  return toString(static_cast<std::int64_t>(value));
++}
++inline std::string toString(unsigned long value)
++{
++  return toString(static_cast<std::uint64_t>(value));
++}
++#endif
+ std::string toString(const std::string& value);
+ std::string toString(float value);
+ std::string toString(double value);
+@@ -385,6 +398,10 @@ inline int time_compare(time_t v1, time_t v2)
+ 
+ 
+ 
++// macOS provides htonll() / ntohll() as macros in <sys/_endian.h> via
++// <arpa/inet.h>; defining our own versions on top would collide. The system
++// versions have identical semantics, so we just defer to them.
++#ifndef __APPLE__
+ inline Int64 htonll(Int64 value)
+ {
+   static const int num = 42;
+@@ -407,5 +424,6 @@ inline Int64 ntohll(Int64 value)
+ 
+   return value;
+ }
++#endif  // !__APPLE__
+ 
+ }
+diff --git a/src/common/MemoryMapper.cpp b/src/common/MemoryMapper.cpp
+index 455785e..224f4bc 100644
+--- a/src/common/MemoryMapper.cpp
++++ b/src/common/MemoryMapper.cpp
+@@ -9,7 +9,9 @@
+ 
+ #include <macgyver/Exception.h>
+ #include <iostream>
++#ifndef __APPLE__
+ #include <linux/userfaultfd.h>
++#endif
+ #include <sys/mman.h>
+ #include <sys/syscall.h>
+ #include <sys/ioctl.h>
+@@ -343,6 +345,14 @@ void MemoryMapper::setEnabled(bool enabled)
+ 
+     if (enabled  &&  mUffd < 0)
+     {
++#ifdef SMARTMET_NO_USERFAULTFD
++      // macOS: userfaultfd is Linux-only; the userfault path is disabled, but
++      // map() still falls through to the boost::iostreams::mapped_file path
++      // when mEnabled stays false, so local files keep working.
++      std::cout << "### NOTE: MemoryMapper userfault mode unavailable on this platform; "
++                   "using plain mmap.\n";
++      return;
++#else
+       curl_global_init(CURL_GLOBAL_ALL);
+ 
+       // ### Initializing the service
+@@ -400,6 +410,7 @@ void MemoryMapper::setEnabled(bool enabled)
+ 
+       mEnabled = enabled;
+       startFaultHandler();
++#endif
+     }
+   }
+   catch (...)
+@@ -453,6 +464,7 @@ void MemoryMapper::map(MapInfo_sptr info)
+         //mFileModificationTime = getFileModificationTime(mFileName.c_str());
+         info->memoryPtr = const_cast<char*>(info->mappedFile->const_data());
+ 
++#ifdef MADV_DONTDUMP
+         if (madvise(info->memoryPtr, info->allocatedSize, MADV_DONTDUMP) != 0)
+         {
+           munmap(info->memoryPtr, info->allocatedSize);
+@@ -460,6 +472,7 @@ void MemoryMapper::map(MapInfo_sptr info)
+           info->allocatedSize = 0;
+           throw Fmi::Exception(BCP,"Core dump limitation (madvise) failed!");
+         }
++#endif
+ 
+         return;
+       }
+@@ -492,6 +505,7 @@ void MemoryMapper::map(MapInfo_sptr info)
+     addMapInfo(info);
+     //mMemoryMappings.insert(std::pair<char*,MapInfo>(info.memoryPtr,info));
+ 
++#ifndef SMARTMET_NO_USERFAULTFD
+     struct uffdio_register uffdio_register;
+     uffdio_register.range.start = (unsigned long)info->memoryPtr;
+     uffdio_register.range.len = info->allocatedSize;
+@@ -499,6 +513,7 @@ void MemoryMapper::map(MapInfo_sptr info)
+ 
+     if (ioctl(mUffd, UFFDIO_REGISTER, &uffdio_register) == -1)
+       throw Fmi::Exception(BCP,"ioctl-UFFDIO_REGISTER");
++#endif
+ 
+   }
+   catch (...)
+@@ -537,12 +552,14 @@ void MemoryMapper::unmap(MapInfo_sptr info)
+         }
+       }
+ 
++#ifndef SMARTMET_NO_USERFAULTFD
+       struct uffdio_register uffdio_register;
+       uffdio_register.range.start = (unsigned long)info->memoryPtr;
+       uffdio_register.range.len = info->allocatedSize;
+       uffdio_register.mode = UFFDIO_REGISTER_MODE_MISSING;
+ 
+       ioctl(mUffd, UFFDIO_UNREGISTER, &uffdio_register);
++#endif
+ 
+       munmap(info->memoryPtr,info->allocatedSize);
+     }
+@@ -827,6 +844,10 @@ int MemoryMapper::getData(MapInfo_sptr info,std::size_t filePosition,int dataSiz
+ 
+ void MemoryMapper::faultProcessingThread()
+ {
++#ifdef SMARTMET_NO_USERFAULTFD
++  // userfaultfd unavailable on this platform; nothing to do.
++  return;
++#else
+   try
+   {
+     if (!mEnabled)
+@@ -972,6 +993,7 @@ void MemoryMapper::faultProcessingThread()
+   {
+     throw Fmi::Exception(BCP,"Operation failed!",nullptr);
+   }
++#endif
+ }
+ 
+ 
+@@ -979,6 +1001,9 @@ void MemoryMapper::faultProcessingThread()
+ 
+ void MemoryMapper::faultHandlerThread()
+ {
++#ifdef SMARTMET_NO_USERFAULTFD
++  return;
++#else
+   try
+   {
+     if (!mEnabled)
+@@ -1071,6 +1096,7 @@ void MemoryMapper::faultHandlerThread()
+   {
+     throw Fmi::Exception(BCP,"Operation failed!",nullptr);
+   }
++#endif
+ }
+ 
+ 
+diff --git a/src/common/MemoryMapper.h b/src/common/MemoryMapper.h
+index a8b7703..e5d9ce5 100644
+--- a/src/common/MemoryMapper.h
++++ b/src/common/MemoryMapper.h
+@@ -7,7 +7,17 @@
+ 
+ #include <string>
+ #include <vector>
++
++// userfaultfd is Linux-specific (kernel 4.3+). On macOS we keep the API
++// surface but no-op the userfault path; callers fall through to plain mmap.
++#ifdef __APPLE__
++#define SMARTMET_NO_USERFAULTFD
++struct uffd_msg
++{
++};  // forward stub so the member declaration below stays valid
++#else
+ #include <linux/userfaultfd.h>
++#endif
+ 
+ 
+ namespace SmartMet
+diff --git a/src/grid/GridFile.cpp b/src/grid/GridFile.cpp
+index 67cea4b..7f03c81 100644
+--- a/src/grid/GridFile.cpp
++++ b/src/grid/GridFile.cpp
+@@ -12,7 +12,9 @@
+ #include "../netcdf/Message.h"
+ #include "../netcdf/NetCdfFile.h"
+ #include "../querydata/Message.h"
++#ifndef __APPLE__
+ #include <linux/userfaultfd.h>
++#endif
+ #include <sys/mman.h>
+ #include <sys/syscall.h>
+ #include <sys/ioctl.h>
