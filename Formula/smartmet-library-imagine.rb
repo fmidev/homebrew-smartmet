@@ -7,6 +7,11 @@ class SmartmetLibraryImagine < Formula
   version "2026.05.08"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-imagine-2026.05.08"
+    sha256 cellar: :any, arm64_tahoe: "26f3ed587257e5cb8fe5e9ae8bfcc6297e83a4651069a4272f438b6f0acbbec4"
+  end
+
   depends_on "boost"
   depends_on "double-conversion"
   depends_on "fmidev/smartmet/smartmet-library-gis"
