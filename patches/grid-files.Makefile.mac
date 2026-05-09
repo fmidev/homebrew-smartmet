@@ -1,0 +1,171 @@
+# Portable Makefile for building smartmet-library-grid-files on macOS
+#
+# Required brew packages:
+#   brew install boost fmt gdal geos curl jpeg-turbo libpng webp openjpeg \
+#                libaec \
+#                fmidev/smartmet/smartmet-library-macgyver \
+#                fmidev/smartmet/smartmet-library-newbase \
+#                fmidev/smartmet/smartmet-library-spine
+#
+# Audit notes:
+#   - Linux userfaultfd path is disabled via #ifdef SMARTMET_NO_USERFAULTFD;
+#     local mmap fallback (boost::iostreams::mapped_file) still works
+#   - MADV_DONTDUMP guarded with #ifdef MADV_DONTDUMP
+#   - boost::iostreams (mapped_file), boost::filesystem are real link deps;
+#     boost::thread is in upstream LIBS but no direct uses found — dropped
+#   - libgeotiff not needed; FMI rolls its own GeoTIFF support
+#   - openjp2 / openjpeg2 in upstream → brew package is `openjpeg`
+#   - eccodes NOT needed: grid-files implements its own GRIB1/GRIB2 decoders
+#
+# Sibling-build defaults assume the smartmet libraries live next to this
+# checkout. Override the *_INC / *_LIB variables to point at brew prefixes.
+
+SUBNAME = grid-files
+LIB     = smartmet-$(SUBNAME)
+
+PREFIX     ?= /opt/homebrew
+
+# ---- Smartmet library locations --------------------------------------------
+MACGYVER_DIR ?= $(CURDIR)/../smartmet-library-macgyver
+NEWBASE_DIR  ?= $(CURDIR)/../smartmet-library-newbase
+SPINE_DIR    ?= $(CURDIR)/../smartmet-library-spine
+GIS_DIR      ?= $(CURDIR)/../smartmet-library-gis
+TRAX_DIR     ?= $(CURDIR)/../smartmet-library-trax
+
+MACGYVER_INC ?= $(MACGYVER_DIR)
+MACGYVER_LIB ?= $(MACGYVER_DIR)
+NEWBASE_INC  ?= $(NEWBASE_DIR)
+NEWBASE_LIB  ?= $(NEWBASE_DIR)
+SPINE_INC    ?= $(SPINE_DIR)
+SPINE_LIB    ?= $(SPINE_DIR)
+GIS_INC      ?= $(GIS_DIR)
+GIS_LIB      ?= $(GIS_DIR)
+TRAX_INC     ?= $(TRAX_DIR)
+TRAX_LIB     ?= $(TRAX_DIR)
+
+# ---- Compiler ---------------------------------------------------------------
+CXX      ?= clang++
+CXXSTD   ?= -std=c++17
+OPT      ?= -O2
+WARN     ?= -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations \
+            -Wno-unused-variable -Wno-unused-but-set-variable \
+            -Wno-unused-private-field -Wno-pessimizing-move \
+            -Wno-deprecated-builtins
+CXXFLAGS ?= $(CXXSTD) $(OPT) $(WARN) -fPIC
+DEFINES   = -DUNIX -D_REENTRANT -DUSE_UNSTABLE_GEOS_CPP_API -D_DARWIN_C_SOURCE \
+            -include $(CURDIR)/macos-prelude.h
+
+# ---- Brew dependency paths --------------------------------------------------
+BOOST_PREFIX    := $(shell brew --prefix boost)
+FMT_PREFIX      := $(shell brew --prefix fmt)
+GDAL_PREFIX     := $(shell brew --prefix gdal)
+GEOS_PREFIX     := $(shell brew --prefix geos)
+CURL_PREFIX     := $(shell brew --prefix curl)
+JPEG_PREFIX     := $(shell brew --prefix jpeg-turbo)
+PNG_PREFIX      := $(shell brew --prefix libpng)
+WEBP_PREFIX     := $(shell brew --prefix webp)
+OPENJPEG_PREFIX := $(shell brew --prefix openjpeg)
+AEC_PREFIX      := $(shell brew --prefix libaec)
+OPENSSL_PREFIX  := $(shell brew --prefix openssl@3)
+DATE_PREFIX     := $(shell brew --prefix howard-hinnant-date)
+
+INCLUDES := -Isrc -Isrc/common -Isrc/grid -Isrc/grib1 -Isrc/grib2 \
+            -Isrc/identification -Isrc/netcdf -Isrc/querydata -Isrc/map \
+            -Isrc/geotiff \
+            -I$(MACGYVER_INC) \
+            -I$(NEWBASE_INC) \
+            -I$(SPINE_INC) \
+            -I$(GIS_INC) \
+            -I$(TRAX_INC) \
+            -I$(BOOST_PREFIX)/include \
+            -I$(FMT_PREFIX)/include \
+            -I$(GDAL_PREFIX)/include \
+            -I$(GEOS_PREFIX)/include \
+            -I$(CURL_PREFIX)/include \
+            -I$(JPEG_PREFIX)/include \
+            -I$(PNG_PREFIX)/include \
+            -I$(WEBP_PREFIX)/include \
+            -I$(OPENJPEG_PREFIX)/include/openjpeg-2.5 \
+            -I$(AEC_PREFIX)/include \
+            -I$(OPENSSL_PREFIX)/include \
+            -I$(DATE_PREFIX)/include
+
+LIBDIRS  := -L$(MACGYVER_LIB) \
+            -L$(NEWBASE_LIB) \
+            -L$(SPINE_LIB) \
+            -L$(GIS_LIB) \
+            -L$(TRAX_LIB) \
+            -L$(BOOST_PREFIX)/lib \
+            -L$(FMT_PREFIX)/lib \
+            -L$(GDAL_PREFIX)/lib \
+            -L$(GEOS_PREFIX)/lib \
+            -L$(CURL_PREFIX)/lib \
+            -L$(JPEG_PREFIX)/lib \
+            -L$(PNG_PREFIX)/lib \
+            -L$(WEBP_PREFIX)/lib \
+            -L$(OPENJPEG_PREFIX)/lib \
+            -L$(AEC_PREFIX)/lib \
+            -L$(OPENSSL_PREFIX)/lib \
+            -L$(DATE_PREFIX)/lib
+
+LIBS     := -lsmartmet-spine -lsmartmet-newbase -lsmartmet-macgyver \
+            -lsmartmet-gis -lsmartmet-trax \
+            -lboost_iostreams -lboost_filesystem -lboost_thread \
+            -lfmt -ldate-tz -lgdal -lgeos -lcurl \
+            -ljpeg -lpng -lwebp -lwebpmux -lwebpdemux -lopenjp2 -laec \
+            -lcrypto -lz -lpthread
+
+# ---- Sources ----------------------------------------------------------------
+SRC_DIRS := common geotiff grib1 grib1/definition grib1/implementation \
+            grib2 grib2/definition grib2/implementation \
+            grid identification map netcdf querydata
+ALL_SRCS := $(foreach d,$(SRC_DIRS),$(wildcard src/$(d)/*.cpp))
+OBJS     := $(patsubst src/%.cpp,obj-mac/%.o,$(ALL_SRCS))
+
+# ---- Library output ---------------------------------------------------------
+DYLIB := lib$(LIB).dylib
+ALIB  := lib$(LIB).a
+
+.PHONY: all clean install
+
+all: $(ALIB) $(DYLIB)
+
+obj-mac/%.o: src/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(ALIB): $(OBJS)
+	$(AR) rcs $@ $(OBJS)
+
+$(DYLIB): $(OBJS)
+	$(CXX) -dynamiclib -install_name @rpath/$(DYLIB) \
+	    $(LIBDIRS) -o $@ $(OBJS) $(LIBS)
+
+install: all
+	@mkdir -p $(DESTDIR)$(PREFIX)/lib $(DESTDIR)$(PREFIX)/include/smartmet/$(SUBNAME)
+	cp $(ALIB) $(DYLIB) $(DESTDIR)$(PREFIX)/lib/
+	@for d in $(SRC_DIRS); do \
+	    dest=$(DESTDIR)$(PREFIX)/include/smartmet/$(SUBNAME)/$$d; \
+	    mkdir -p $$dest; \
+	    for h in src/$$d/*.h; do [ -f $$h ] && cp $$h $$dest/; done; \
+	done
+	# Config + parameter / geometry CSVs. These are referenced by the .conf
+	# via %(DIR) so they must stay alongside it. Mirrors the Linux RPM layout
+	# at /usr/share/smartmet/grid-files/.
+	@mkdir -p $(DESTDIR)$(PREFIX)/share/smartmet/grid-files
+	cp cfg/grid-files.conf $(DESTDIR)$(PREFIX)/share/smartmet/grid-files/
+	cp cfg/*.csv $(DESTDIR)$(PREFIX)/share/smartmet/grid-files/ 2>/dev/null || true
+	cp cfg/*.dat cfg/*.png $(DESTDIR)$(PREFIX)/share/smartmet/grid-files/ 2>/dev/null || true
+	@if [ -d cfg/ext ]; then \
+	    mkdir -p $(DESTDIR)$(PREFIX)/share/smartmet/grid-files/ext; \
+	    cp cfg/ext/*.csv $(DESTDIR)$(PREFIX)/share/smartmet/grid-files/ext/ 2>/dev/null || true; \
+	fi
+	# The .conf references ext/grib_parameters.csv but FMI's source tree
+	# doesn't ship that file (it's normally generated by radon2config). The
+	# loader throws on missing files, so create an empty stub.
+	@touch $(DESTDIR)$(PREFIX)/share/smartmet/grid-files/ext/grib_parameters.csv
+
+clean:
+	rm -rf obj-mac $(ALIB) $(DYLIB)
+
+-include $(OBJS:.o=.d)
