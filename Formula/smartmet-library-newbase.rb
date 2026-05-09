@@ -4,13 +4,8 @@ class SmartmetLibraryNewbase < Formula
   homepage "https://github.com/fmidev/smartmet-library-newbase"
   url "https://github.com/fmidev/smartmet-library-newbase.git",
       revision: "574bd90bc526ec0b4e8d41b3d87a910eff4c7edf"
-  version "2026.05.08"
+  version "2026.05.10"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-newbase-2026.05.08"
-    sha256 cellar: :any, arm64_tahoe: "0c0ee9e139a5f9e1e879678fdc1b87033674f96c513253f425072e10e9b0d24f"
-  end
 
   depends_on "boost"
   depends_on "double-conversion"

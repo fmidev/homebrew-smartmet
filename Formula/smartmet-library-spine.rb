@@ -4,13 +4,8 @@ class SmartmetLibrarySpine < Formula
   homepage "https://github.com/fmidev/smartmet-library-spine"
   url "https://github.com/fmidev/smartmet-library-spine.git",
       revision: "299c5ea41bdd1d920b5d0dd495235f9f7a4f57b0"
-  version "2026.05.08"
+  version "2026.05.10"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-spine-2026.05.08"
-    sha256 cellar: :any, arm64_tahoe: "720fc55cc610039829b887fcb2cd6976e64f158ed5ba2fa8c228cdc8f9985038"
-  end
 
   depends_on "boost"
   depends_on "double-conversion"
