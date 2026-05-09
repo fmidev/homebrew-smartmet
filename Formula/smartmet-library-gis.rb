@@ -7,6 +7,11 @@ class SmartmetLibraryGis < Formula
   version "2026.05.08"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-gis-2026.05.08"
+    sha256 cellar: :any, arm64_tahoe: "7b507cd3b6681f2db9ccf1a075756efbd2bff46702ef4d4e99b20abf56599097"
+  end
+
   depends_on "boost"
   depends_on "double-conversion"
   depends_on "fmidev/smartmet/smartmet-library-macgyver"
