@@ -7,6 +7,11 @@ class SmartmetLibraryTrax < Formula
   version "2026.05.10"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-trax-2026.05.10"
+    sha256 cellar: :any, arm64_tahoe: "8929108d0619f81ee678eb086fc70bee5ed0873d0fa2a49cc06b0bc8ce03f05f"
+  end
+
   depends_on "boost"
   depends_on "fmidev/smartmet/smartmet-library-macgyver"
   depends_on "fmt"
