@@ -4,7 +4,7 @@ class SmartmetQdtools < Formula
   homepage "https://github.com/fmidev/smartmet-qdtools"
   url "https://github.com/fmidev/smartmet-qdtools.git",
       revision: "604ec7fedc298b2f5a43a8068df6b15effdf5bdc"
-  version "2026.05.10"
+  version "2026.05.10.1"
   license "MIT"
 
   depends_on "boost"

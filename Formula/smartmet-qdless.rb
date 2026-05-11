@@ -4,7 +4,7 @@ class SmartmetQdless < Formula
   homepage "https://github.com/fmidev/smartmet-qdless"
   url "https://github.com/fmidev/smartmet-qdless.git",
       revision: "218d7b039b9015e6f7c22b74b1d7779015102cbb"
-  version "2026.05.10.1"
+  version "2026.05.10.2"
   license "MIT"
 
   # GRIB1 / GRIB2 / NetCDF input is built unconditionally via

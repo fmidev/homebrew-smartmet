@@ -1,0 +1,39 @@
+diff --git a/qd_driver/QDWrite.cpp b/qd_driver/QDWrite.cpp
+index a8a0845..24dfc57 100644
+--- a/qd_driver/QDWrite.cpp
++++ b/qd_driver/QDWrite.cpp
+@@ -91,7 +91,8 @@ const char* fetchOpt(CSLConstList options, GDALDataset* src, const char* key)
+ }  // namespace
+ 
+ GDALDataset* createCopy(const char* pszFilename, GDALDataset* poSrcDS, int /*bStrict*/,
+-                        char** papszOptions, GDALProgressFunc pfnProgress, void* pProgressData)
++                        QDCreateCopyOptions papszOptions, GDALProgressFunc pfnProgress,
++                        void* pProgressData)
+ {
+   if (poSrcDS == nullptr || pszFilename == nullptr)
+   {
+diff --git a/qd_driver/QDWrite.h b/qd_driver/QDWrite.h
+index a3a7d89..234fdb4 100644
+--- a/qd_driver/QDWrite.h
++++ b/qd_driver/QDWrite.h
+@@ -19,8 +19,19 @@ namespace GdalQueryData
+ //   LEVEL_TYPE       (default: 1 = ground/surface)
+ //   START_TIME       ISO 8601 — first band's valid time (default: from band metadata)
+ //   TIMESTEP_MINUTES interval between consecutive bands (default: from band metadata)
++// GDAL 3.13 changed the CreateCopyCallback signature's papszOptions parameter
++// from `char**` to `CSLConstList` (`const char *const *`). Match whichever
++// GDAL we're built against so the function pointer assignment in QDDriver
++// type-checks. The function body reads but does not mutate the list.
++#if defined(GDAL_VERSION_NUM) && (GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0))
++using QDCreateCopyOptions = CSLConstList;
++#else
++using QDCreateCopyOptions = char**;
++#endif
++
+ GDALDataset* createCopy(const char* pszFilename, GDALDataset* poSrcDS, int bStrict,
+-                        char** papszOptions, GDALProgressFunc pfnProgress, void* pProgressData);
++                        QDCreateCopyOptions papszOptions, GDALProgressFunc pfnProgress,
++                        void* pProgressData);
+ 
+ }  // namespace GdalQueryData
+ }  // namespace SmartMet
