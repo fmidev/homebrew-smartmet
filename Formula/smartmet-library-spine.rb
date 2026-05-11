@@ -7,6 +7,11 @@ class SmartmetLibrarySpine < Formula
   version "2026.05.10"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-spine-2026.05.10"
+    sha256 cellar: :any, arm64_tahoe: "f6e72e77a086e01ba88551b9f700768edafcc11ed18b4a470d35a4873048eaa0"
+  end
+
   depends_on "boost"
   depends_on "double-conversion"
   depends_on "fmidev/smartmet/smartmet-library-gis"
