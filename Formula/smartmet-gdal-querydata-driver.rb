@@ -4,7 +4,7 @@ class SmartmetGdalQuerydataDriver < Formula
   homepage "https://github.com/fmidev/smartmet-gdal-querydata-driver"
   url "https://github.com/fmidev/smartmet-gdal-querydata-driver.git",
       revision: "b858129fd1ab206d4e1698aab48cdf33810d4c5f"
-  version "2026.05.10"
+  version "2026.05.10.1"
   license "MIT"
 
   depends_on "boost"
@@ -18,6 +18,7 @@ class SmartmetGdalQuerydataDriver < Formula
 
   def install
     tap_patches = Tap.fetch("fmidev/smartmet").path/"patches"
+    system "patch", "-p1", "-i", "#{tap_patches}/gdal-querydata-driver-macos.patch"
     cp "#{tap_patches}/gdal-querydata-driver.Makefile.mac", "Makefile.mac"
 
     macgyver = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
