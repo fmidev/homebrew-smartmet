@@ -3,8 +3,8 @@ class SmartmetLibraryGis < Formula
   desc "FMI smartmet — geospatial utilities (GDAL/GEOS/PROJ wrappers)"
   homepage "https://github.com/fmidev/smartmet-library-gis"
   url "https://github.com/fmidev/smartmet-library-gis.git",
-      revision: "b8a150394390ddfe559b96309142c553c24ef95c"
-  version "2026.05.08"
+      revision: "db4b3c5a7d1a74344ff1dc6cf44ff421310bebba"
+  version "2026.05.11"
   license "MIT"
 
   bottle do

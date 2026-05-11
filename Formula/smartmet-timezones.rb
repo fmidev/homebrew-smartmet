@@ -3,8 +3,8 @@ class SmartmetTimezones < Formula
   desc "FMI smartmet — timezone region/coordinate data files"
   homepage "https://github.com/fmidev/smartmet-timezones"
   url "https://github.com/fmidev/smartmet-timezones.git",
-      revision: "f8a4b1d6a110db9083aa86bf28258a935e46064e"
-  version "2026.05.04"
+      revision: "ce9cf08f9906e3963044d12cbea4ea1abd0b2cfd"
+  version "2026.05.11"
   license "MIT"
 
   bottle do
