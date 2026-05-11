@@ -7,6 +7,11 @@ class SmartmetLibraryGridFiles < Formula
   version "2026.05.08.1"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-grid-files-2026.05.08.1"
+    sha256 cellar: :any, arm64_tahoe: "a23b7d7da73b4749c485a897b2f84a6bd39c7098ab6bcd0950ac91db41ce75ed"
+  end
+
   # macOS port note: Linux's userfaultfd memory-mapper path is disabled via
   # SMARTMET_NO_USERFAULTFD; local files still work via boost::iostreams::
   # mapped_file. Remote (S3/HTTP) lazy paging is not available — load whole
