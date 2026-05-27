@@ -8,8 +8,8 @@ class SmartmetLibraryGridFiles < Formula
   license "MIT"
 
   bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-grid-files-2026.05.08.1"
-    sha256 cellar: :any, arm64_tahoe: "a23b7d7da73b4749c485a897b2f84a6bd39c7098ab6bcd0950ac91db41ce75ed"
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-grid-files-2026.05.27"
+    sha256 cellar: :any, arm64_tahoe: "1927cd8a7775f6466751e61a16b05d25f1c0e1fd9c6ecc1cbab2a010f4a9e9be"
   end
 
   # macOS port note: Linux's userfaultfd memory-mapper path is disabled via
