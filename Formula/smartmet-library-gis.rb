@@ -8,8 +8,8 @@ class SmartmetLibraryGis < Formula
   license "MIT"
 
   bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-gis-2026.05.10"
-    sha256 cellar: :any, arm64_tahoe: "a9cfc1f8f2c1ec169ce19485faae4891fe58f50fac959a05f60931103313d2f5"
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-gis-2026.05.27"
+    sha256 cellar: :any, arm64_tahoe: "a3f904033e20b49e90bbcc29295376efc3e1ec48b0a6e4d87be84a8c59ad86f2"
   end
 
   depends_on "boost"
