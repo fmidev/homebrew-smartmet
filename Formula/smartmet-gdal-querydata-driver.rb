@@ -3,8 +3,8 @@ class SmartmetGdalQuerydataDriver < Formula
   desc "FMI smartmet — GDAL driver plugin for QueryData (.sqd, .fqd) raster files"
   homepage "https://github.com/fmidev/smartmet-gdal-querydata-driver"
   url "https://github.com/fmidev/smartmet-gdal-querydata-driver.git",
-      revision: "b858129fd1ab206d4e1698aab48cdf33810d4c5f"
-  version "2026.05.10"
+      revision: "8cda9e7c5f62539c10163635adfdb28e83cb503e"
+  version "2026.05.27"
   license "MIT"
 
   depends_on "boost"

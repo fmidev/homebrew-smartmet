@@ -3,8 +3,8 @@ class SmartmetLibraryGridFiles < Formula
   desc "FMI smartmet — unified GRIB1/GRIB2/NetCDF/QueryData reader library"
   homepage "https://github.com/fmidev/smartmet-library-grid-files"
   url "https://github.com/fmidev/smartmet-library-grid-files.git",
-      revision: "60b95067c09fb9b268e1432147cd553007171d89"
-  version "2026.05.08.1"
+      revision: "ae2db04aa9c52b6ef7f998c5d5eb85b5cfe44fb7"
+  version "2026.05.27"
   license "MIT"
 
   bottle do

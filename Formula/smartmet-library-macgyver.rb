@@ -3,8 +3,8 @@ class SmartmetLibraryMacgyver < Formula
   desc "FMI smartmet — foundational utility library"
   homepage "https://github.com/fmidev/smartmet-library-macgyver"
   url "https://github.com/fmidev/smartmet-library-macgyver.git",
-      revision: "bc6bb9b6a5d775b0bcf27f9e5bc1b887ebaafc34"
-  version "2026.05.08"
+      revision: "aed67385eda5ecfde75e25e2c34568e708dd78ba"
+  version "2026.05.27"
   license "MIT"
 
   bottle do
