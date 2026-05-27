@@ -8,8 +8,8 @@ class SmartmetLibraryMacgyver < Formula
   license "MIT"
 
   bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-macgyver-2026.05.08"
-    sha256 cellar: :any, arm64_tahoe: "9272b7553be90b660706590361e73d80253fd60881ac2c6cc922e77abe6e13ee"
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-library-macgyver-2026.05.27"
+    sha256 cellar: :any, arm64_tahoe: "05aa2a601196053419de9cf67f88a55a82e556de8e53bee82159ec334e6c997b"
   end
 
   depends_on "boost"
