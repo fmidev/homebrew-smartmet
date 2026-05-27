@@ -3,7 +3,7 @@ class SmartmetQdless < Formula
   desc "FMI smartmet — interactive UTF-8 terminal viewer for querydata / GRIB / NetCDF"
   homepage "https://github.com/fmidev/smartmet-qdless"
   url "https://github.com/fmidev/smartmet-qdless.git",
-      revision: "a058958499f37b3d3c8e21ff5ce4c9a01b6754d8"
+      revision: "a05895840184e569dd987158a76c5c6440b7e11c"
   version "2026.05.27"
   license "MIT"
 
