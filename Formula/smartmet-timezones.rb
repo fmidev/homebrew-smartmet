@@ -8,9 +8,8 @@ class SmartmetTimezones < Formula
   license "MIT"
 
   bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-timezones-2026.05.04"
-    rebuild 1
-    sha256 cellar: :any_skip_relocation, arm64_tahoe: "8c9f9243829e461d9cb72189864f4eb916100ffedfa7093140eee3e6063aa068"
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-timezones-2026.05.27"
+    sha256 cellar: :any_skip_relocation, arm64_tahoe: "4ff7b703b22aee76b4f55606927a820a9fc614c5b9ba14d10f2dbdc501370bfd"
   end
 
   def install
