@@ -6,6 +6,10 @@ class SmartmetQdtools < Formula
       revision: "48b37c0c5e4e27781efe8f822e619ae1f5bf6231"
   version "2026.05.27"
   license "MIT"
+  # revision 1: qdtools-macos.patch now fixes Hdf5File.cpp + NcFileExtended.cpp
+  # for GDAL 3.13 (GetMetadata returns CSLConstList, not char**). Source
+  # revision is unchanged.
+  revision 1
 
   depends_on "boost"
   depends_on "bzip2"

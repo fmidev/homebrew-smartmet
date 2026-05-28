@@ -54,6 +54,101 @@ index ff0eaba..b7bea8e 100644
      return 1;
    }
    catch (...)
+diff --git a/source/Hdf5File.cpp b/source/Hdf5File.cpp
+index 7479c92..7e5ce45 100644
+--- a/source/Hdf5File.cpp
++++ b/source/Hdf5File.cpp
+@@ -55,7 +55,7 @@ try
+         throw std::runtime_error("GDAL failed to open HDF5 file: " + path);
+ 
+     // Load all attribute metadata (GDAL flattens HDF5 group attributes)
+-    char** papszMD = gdal_ds->GetMetadata("");
++    auto papszMD = gdal_ds->GetMetadata("");
+     if (papszMD != nullptr)
+     {
+         for (int i = 0; papszMD[i] != nullptr; ++i)
+@@ -68,7 +68,7 @@ try
+     }
+ 
+     // Load subdatasets (multi-dataset HDF5 files like PVOL)
+-    char** papszSub = gdal_ds->GetMetadata("SUBDATASETS");
++    auto papszSub = gdal_ds->GetMetadata("SUBDATASETS");
+     if (papszSub != nullptr)
+     {
+         for (int i = 0; papszSub[i] != nullptr; ++i)
+diff --git a/source/NcFileExtended.cpp b/source/NcFileExtended.cpp
+index ab03195..875334f 100644
+--- a/source/NcFileExtended.cpp
++++ b/source/NcFileExtended.cpp
+@@ -239,7 +239,7 @@ std::string nctools::NcFileExtended::open_var_ds_name(const std::string& varname
+     return {};
+ 
+   // Try to find exact subdataset name from GDAL SUBDATASETS metadata
+-  char** subdatasets = GDALGetMetadata(gdal_dataset, "SUBDATASETS");
++  auto subdatasets = GDALGetMetadata(gdal_dataset, "SUBDATASETS");
+   if (subdatasets)
+   {
+     for (int i = 0; subdatasets[i]; i++)
+@@ -301,7 +301,7 @@ void nctools::NcFileExtended::load_first_var_meta() const
+     // No subdatasets: single-variable file. Load metadata directly from top-level dataset.
+     if (!gdal_dataset)
+       return;
+-    char** meta = GDALGetMetadata(gdal_dataset, nullptr);
++    auto meta = GDALGetMetadata(gdal_dataset, nullptr);
+     if (!meta)
+       return;
+     // Determine variable name from metadata keys (e.g. "cnc_PM10#units" → "cnc_PM10")
+@@ -338,7 +338,7 @@ void nctools::NcFileExtended::load_first_var_meta() const
+   auto load_from_ds = [&](const std::string& vname, GDALDatasetH ds)
+   {
+     first_var_name_ = vname;
+-    char** meta = GDALGetMetadata(ds, nullptr);
++    auto meta = GDALGetMetadata(ds, nullptr);
+     for (int i = 0; meta && meta[i]; i++)
+     {
+       const std::string item(meta[i]);
+@@ -413,7 +413,7 @@ void nctools::NcFileExtended::merge_dim_meta(const std::string& dimname) const
+     GDALDatasetH ds = open_var_dataset(vname);
+     if (!ds)
+       continue;
+-    char** meta = GDALGetMetadata(ds, nullptr);
++    auto meta = GDALGetMetadata(ds, nullptr);
+     bool has_dim = false;
+     for (int i = 0; meta && meta[i]; i++)
+     {
+@@ -501,7 +501,7 @@ std::string nctools::NcFileExtended::get_subdataset_desc(const std::string& varn
+ {
+   if (!gdal_dataset)
+     return {};
+-  char** meta = GDALGetMetadata(gdal_dataset, "SUBDATASETS");
++  auto meta = GDALGetMetadata(gdal_dataset, "SUBDATASETS");
+   if (!meta)
+     return {};
+ 
+@@ -611,12 +611,12 @@ std::vector<std::string> nctools::NcFileExtended::get_gdal_variable_names() cons
+     if (!gdal_dataset)
+       return {};
+ 
+-    char** subdatasets = GDALGetMetadata(gdal_dataset, "SUBDATASETS");
++    auto subdatasets = GDALGetMetadata(gdal_dataset, "SUBDATASETS");
+     if (!subdatasets)
+     {
+       // No subdatasets: single-variable file.
+       // Find the variable name from the top-level metadata keys (e.g. "cnc_PM10#units").
+-      char** meta = GDALGetMetadata(gdal_dataset, nullptr);
++      auto meta = GDALGetMetadata(gdal_dataset, nullptr);
+       for (int i = 0; meta && meta[i]; i++)
+       {
+         const std::string item(meta[i]);
+@@ -2224,7 +2224,7 @@ void nctools::NcFileExtended::printInfo() const
+     std::cout << "    Variables (GDAL SUBDATASETS):\n";
+     if (!gdal_dataset)
+       return;
+-    char** subdatasets = GDALGetMetadata(gdal_dataset, "SUBDATASETS");
++    auto subdatasets = GDALGetMetadata(gdal_dataset, "SUBDATASETS");
+     for (int i = 0; subdatasets && subdatasets[i]; i++)
+     {
+       const std::string item(subdatasets[i]);
 diff --git a/test/QDToolsTest.pm b/test/QDToolsTest.pm
 index c4501e9..76e41f2 100644
 --- a/test/QDToolsTest.pm

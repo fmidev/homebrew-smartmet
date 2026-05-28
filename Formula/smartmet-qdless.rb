@@ -6,6 +6,9 @@ class SmartmetQdless < Formula
       revision: "a05895840184e569dd987158a76c5c6440b7e11c"
   version "2026.05.27"
   license "MIT"
+  # revision 1: drop direct spine/trax linkage so `brew linkage --test` passes
+  # (they remain transitive via grid-files). Source revision is unchanged.
+  revision 1
 
   # GRIB1 / GRIB2 / NetCDF input is built unconditionally via
   # smartmet-library-grid-files. The grid-files config + parameter / geometry
