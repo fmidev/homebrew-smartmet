@@ -115,8 +115,14 @@ LIBDIRS  := -L$(MACGYVER_LIB) -L$(GIS_LIB) -L$(NEWBASE_LIB) \
 # / `-lpanelw` aren't needed because Homebrew ncursesw bundles termcap and
 # we don't use panel.h. smarttools / calculator are dropped — qdless's own
 # source code doesn't reference either since 12e7e15. imagine is dropped
-# in 218d7b0 (PNG export now goes through GDAL's PNG driver).
-LIBS     := -lsmartmet-grid-files -lsmartmet-spine -lsmartmet-trax \
+# in 218d7b0 (PNG export now goes through GDAL's PNG driver). spine + trax
+# are dropped from the direct link line too — qdless's source doesn't
+# reference any spine/trax headers, and libsmartmet-grid-files.dylib
+# already lists them so dyld pulls them in transitively. Keeping them off
+# the direct NEEDED list is what makes `brew linkage --test` pass (it
+# rejects linkage against indirect, non-depends_on formulae). The rpath
+# entries above stay so dyld can still find the bottled dylibs at runtime.
+LIBS     := -lsmartmet-grid-files \
             -lsmartmet-newbase \
             -lsmartmet-macgyver -lsmartmet-gis \
             -lncursesw \
