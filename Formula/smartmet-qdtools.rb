@@ -11,6 +11,11 @@ class SmartmetQdtools < Formula
   # revision is unchanged.
   revision 1
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-qdtools-2026.05.27_1"
+    sha256 cellar: :any, arm64_tahoe: "e973645aa0876d731aacb805b952bfce20a08273ba2a9b099a1f00c68a5af1c9"
+  end
+
   depends_on "boost"
   depends_on "bzip2"
   depends_on "double-conversion"
