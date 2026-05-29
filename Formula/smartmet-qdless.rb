@@ -7,6 +7,11 @@ class SmartmetQdless < Formula
   version "2026.05.29.1"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-qdless-2026.05.29.1"
+    sha256 arm64_tahoe: "7dbe7b43e0375a5505af8d7264148ba965519be4b9173852d801d9fa5cc6b4f3"
+  end
+
   # GRIB1 / GRIB2 / NetCDF input is built unconditionally via
   # smartmet-library-grid-files. The grid-files config + parameter / geometry
   # CSVs are auto-discovered at /opt/homebrew/share/smartmet/grid-files/ (set
