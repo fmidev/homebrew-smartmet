@@ -3,17 +3,9 @@ class SmartmetQdless < Formula
   desc "FMI smartmet — interactive UTF-8 terminal viewer for querydata / GRIB / NetCDF"
   homepage "https://github.com/fmidev/smartmet-qdless"
   url "https://github.com/fmidev/smartmet-qdless.git",
-      revision: "a05895840184e569dd987158a76c5c6440b7e11c"
-  version "2026.05.27"
+      revision: "ba7959552eb785013eb8cac2b1832838746d1065"
+  version "2026.05.29"
   license "MIT"
-  # revision 1: drop direct spine/trax linkage so `brew linkage --test` passes
-  # (they remain transitive via grid-files). Source revision is unchanged.
-  revision 1
-
-  bottle do
-    root_url "https://github.com/fmidev/homebrew-smartmet/releases/download/smartmet-qdless-2026.05.27_1"
-    sha256 arm64_tahoe: "3af0947ae30eb06c2551d9fcab93cfdf5222ca5e73ab4d88c502fe54c630e7b8"
-  end
 
   # GRIB1 / GRIB2 / NetCDF input is built unconditionally via
   # smartmet-library-grid-files. The grid-files config + parameter / geometry
