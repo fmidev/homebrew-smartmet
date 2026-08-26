@@ -27,7 +27,7 @@ class SmartmetLibraryGis < Formula
     # No source patches needed for gis (just exclude EPSGInfo.cpp via Makefile.mac)
     cp "#{tap_patches}/gis.Makefile.mac", "Makefile.mac"
 
-    macgyver = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
+    macgyver = formula_opt_prefix("fmidev/smartmet/smartmet-library-macgyver")
     system "make", "-f", "Makefile.mac", "-j#{ENV.make_jobs}",
            "MACGYVER_INC=#{macgyver}/include/smartmet",
            "MACGYVER_LIB=#{macgyver}/lib"
@@ -42,7 +42,7 @@ class SmartmetLibraryGis < Formula
         return b.width() == 100 ? 0 : 1;
       }
     CPP
-    macgyver = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
+    macgyver = formula_opt_prefix("fmidev/smartmet/smartmet-library-macgyver")
     system ENV.cxx, "-std=c++17",
            "-I#{include}/smartmet", "-I#{macgyver}/include/smartmet",
            "-L#{lib}", "-lsmartmet-gis",

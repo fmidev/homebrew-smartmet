@@ -25,8 +25,8 @@ class SmartmetLibraryNewbase < Formula
     system "patch", "-p1", "-i", "#{tap_patches}/newbase-macos.patch"
     cp "#{tap_patches}/newbase.Makefile.mac", "Makefile.mac"
 
-    macgyver = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
-    gis      = Formula["fmidev/smartmet/smartmet-library-gis"].opt_prefix
+    macgyver = formula_opt_prefix("fmidev/smartmet/smartmet-library-macgyver")
+    gis      = formula_opt_prefix("fmidev/smartmet/smartmet-library-gis")
     system "make", "-f", "Makefile.mac", "-j#{ENV.make_jobs}",
            "MACGYVER_INC=#{macgyver}/include/smartmet", "MACGYVER_LIB=#{macgyver}/lib",
            "GIS_INC=#{gis}/include/smartmet",           "GIS_LIB=#{gis}/lib"
@@ -38,8 +38,8 @@ class SmartmetLibraryNewbase < Formula
       #include <newbase/NFmiPoint.h>
       int main() { NFmiPoint p(1,2); return p.X() == 1 ? 0 : 1; }
     CPP
-    macgyver = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
-    gis      = Formula["fmidev/smartmet/smartmet-library-gis"].opt_prefix
+    macgyver = formula_opt_prefix("fmidev/smartmet/smartmet-library-macgyver")
+    gis      = formula_opt_prefix("fmidev/smartmet/smartmet-library-gis")
     system ENV.cxx, "-std=c++17",
            "-I#{include}/smartmet",
            "-I#{macgyver}/include/smartmet",

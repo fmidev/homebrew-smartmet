@@ -38,14 +38,14 @@ class SmartmetQdless < Formula
     system "patch", "-p1", "-i", "#{tap_patches}/qdless-macos.patch"
     cp "#{tap_patches}/qdless.Makefile.mac", "Makefile.mac"
 
-    macgyver   = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
-    gis        = Formula["fmidev/smartmet/smartmet-library-gis"].opt_prefix
-    newbase    = Formula["fmidev/smartmet/smartmet-library-newbase"].opt_prefix
-    grid_files = Formula["fmidev/smartmet/smartmet-library-grid-files"].opt_prefix
+    macgyver   = formula_opt_prefix("fmidev/smartmet/smartmet-library-macgyver")
+    gis        = formula_opt_prefix("fmidev/smartmet/smartmet-library-gis")
+    newbase    = formula_opt_prefix("fmidev/smartmet/smartmet-library-newbase")
+    grid_files = formula_opt_prefix("fmidev/smartmet/smartmet-library-grid-files")
     # spine + trax are pulled in transitively by grid-files; qdless's own
     # source no longer references them directly.
-    spine      = Formula["fmidev/smartmet/smartmet-library-spine"].opt_prefix
-    trax       = Formula["fmidev/smartmet/smartmet-library-trax"].opt_prefix
+    spine      = formula_opt_prefix("fmidev/smartmet/smartmet-library-spine")
+    trax       = formula_opt_prefix("fmidev/smartmet/smartmet-library-trax")
     gshhg      = Formula["fmidev/smartmet/gshhg-gmt-nc4"].opt_share/"gshhg-gmt-nc4"
 
     # The grid-files headers live at <grid-files prefix>/include/smartmet/
@@ -61,16 +61,16 @@ class SmartmetQdless < Formula
            "SPINE_INC=#{spine}/include/smartmet",         "SPINE_LIB=#{spine}/lib",
            "TRAX_INC=#{trax}/include/smartmet",           "TRAX_LIB=#{trax}/lib",
            "GRID_FILES_INC=#{grid_files}/include/smartmet", "GRID_FILES_LIB=#{grid_files}/lib",
-           "BOOST_PREFIX=#{Formula["boost"].opt_prefix}",
-           "FMT_PREFIX=#{Formula["fmt"].opt_prefix}",
-           "DC_PREFIX=#{Formula["double-conversion"].opt_prefix}",
-           "DATE_PREFIX=#{Formula["howard-hinnant-date"].opt_prefix}",
-           "JSONCPP_PREFIX=#{Formula["jsoncpp"].opt_prefix}",
-           "NCURSES_PREFIX=#{Formula["ncurses"].opt_prefix}",
-           "NETCDF_PREFIX=#{Formula["netcdf"].opt_prefix}",
-           "NETCDFCXX_PREFIX=#{Formula["netcdf-cxx"].opt_prefix}",
-           "GDAL_PREFIX=#{Formula["gdal"].opt_prefix}",
-           "WEBP_PREFIX=#{Formula["webp"].opt_prefix}"
+           "BOOST_PREFIX=#{formula_opt_prefix("boost")}",
+           "FMT_PREFIX=#{formula_opt_prefix("fmt")}",
+           "DC_PREFIX=#{formula_opt_prefix("double-conversion")}",
+           "DATE_PREFIX=#{formula_opt_prefix("howard-hinnant-date")}",
+           "JSONCPP_PREFIX=#{formula_opt_prefix("jsoncpp")}",
+           "NCURSES_PREFIX=#{formula_opt_prefix("ncurses")}",
+           "NETCDF_PREFIX=#{formula_opt_prefix("netcdf")}",
+           "NETCDFCXX_PREFIX=#{formula_opt_prefix("netcdf-cxx")}",
+           "GDAL_PREFIX=#{formula_opt_prefix("gdal")}",
+           "WEBP_PREFIX=#{formula_opt_prefix("webp")}"
 
     system "make", "-f", "Makefile.mac", "install",
            "PREFIX=#{prefix}",

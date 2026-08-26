@@ -41,11 +41,11 @@ class SmartmetLibraryGridFiles < Formula
     cp "#{tap_patches}/grid-files.Makefile.mac", "Makefile.mac"
     cp "#{tap_patches}/grid-files.macos-prelude.h", "macos-prelude.h"
 
-    macgyver = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
-    gis      = Formula["fmidev/smartmet/smartmet-library-gis"].opt_prefix
-    newbase  = Formula["fmidev/smartmet/smartmet-library-newbase"].opt_prefix
-    spine    = Formula["fmidev/smartmet/smartmet-library-spine"].opt_prefix
-    trax     = Formula["fmidev/smartmet/smartmet-library-trax"].opt_prefix
+    macgyver = formula_opt_prefix("fmidev/smartmet/smartmet-library-macgyver")
+    gis      = formula_opt_prefix("fmidev/smartmet/smartmet-library-gis")
+    newbase  = formula_opt_prefix("fmidev/smartmet/smartmet-library-newbase")
+    spine    = formula_opt_prefix("fmidev/smartmet/smartmet-library-spine")
+    trax     = formula_opt_prefix("fmidev/smartmet/smartmet-library-trax")
 
     system "make", "-f", "Makefile.mac", "-j#{ENV.make_jobs}",
            "PREFIX=#{prefix}",
@@ -54,18 +54,18 @@ class SmartmetLibraryGridFiles < Formula
            "SPINE_INC=#{spine}/include/smartmet",       "SPINE_LIB=#{spine}/lib",
            "GIS_INC=#{gis}/include/smartmet",           "GIS_LIB=#{gis}/lib",
            "TRAX_INC=#{trax}/include/smartmet",         "TRAX_LIB=#{trax}/lib",
-           "BOOST_PREFIX=#{Formula["boost"].opt_prefix}",
-           "FMT_PREFIX=#{Formula["fmt"].opt_prefix}",
-           "GDAL_PREFIX=#{Formula["gdal"].opt_prefix}",
-           "GEOS_PREFIX=#{Formula["geos"].opt_prefix}",
-           "CURL_PREFIX=#{Formula["curl"].opt_prefix}",
-           "JPEG_PREFIX=#{Formula["jpeg-turbo"].opt_prefix}",
-           "PNG_PREFIX=#{Formula["libpng"].opt_prefix}",
-           "WEBP_PREFIX=#{Formula["webp"].opt_prefix}",
-           "OPENJPEG_PREFIX=#{Formula["openjpeg"].opt_prefix}",
-           "AEC_PREFIX=#{Formula["libaec"].opt_prefix}",
-           "OPENSSL_PREFIX=#{Formula["openssl@3"].opt_prefix}",
-           "DATE_PREFIX=#{Formula["howard-hinnant-date"].opt_prefix}"
+           "BOOST_PREFIX=#{formula_opt_prefix("boost")}",
+           "FMT_PREFIX=#{formula_opt_prefix("fmt")}",
+           "GDAL_PREFIX=#{formula_opt_prefix("gdal")}",
+           "GEOS_PREFIX=#{formula_opt_prefix("geos")}",
+           "CURL_PREFIX=#{formula_opt_prefix("curl")}",
+           "JPEG_PREFIX=#{formula_opt_prefix("jpeg-turbo")}",
+           "PNG_PREFIX=#{formula_opt_prefix("libpng")}",
+           "WEBP_PREFIX=#{formula_opt_prefix("webp")}",
+           "OPENJPEG_PREFIX=#{formula_opt_prefix("openjpeg")}",
+           "AEC_PREFIX=#{formula_opt_prefix("libaec")}",
+           "OPENSSL_PREFIX=#{formula_opt_prefix("openssl@3")}",
+           "DATE_PREFIX=#{formula_opt_prefix("howard-hinnant-date")}"
 
     system "make", "-f", "Makefile.mac", "install", "PREFIX=#{prefix}"
   end

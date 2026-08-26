@@ -32,26 +32,26 @@ class SmartmetLibrarySpine < Formula
     system "patch", "-p1", "-i", "#{tap_patches}/spine-macos.patch"
     cp "#{tap_patches}/spine.Makefile.mac", "Makefile.mac"
 
-    macgyver = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
-    gis      = Formula["fmidev/smartmet/smartmet-library-gis"].opt_prefix
-    newbase  = Formula["fmidev/smartmet/smartmet-library-newbase"].opt_prefix
+    macgyver = formula_opt_prefix("fmidev/smartmet/smartmet-library-macgyver")
+    gis      = formula_opt_prefix("fmidev/smartmet/smartmet-library-gis")
+    newbase  = formula_opt_prefix("fmidev/smartmet/smartmet-library-newbase")
 
     system "make", "-f", "Makefile.mac", "-j#{ENV.make_jobs}",
            "PREFIX=#{prefix}",
            "MACGYVER_INC=#{macgyver}/include/smartmet", "MACGYVER_LIB=#{macgyver}/lib",
            "GIS_INC=#{gis}/include/smartmet",           "GIS_LIB=#{gis}/lib",
            "NEWBASE_INC=#{newbase}/include/smartmet",   "NEWBASE_LIB=#{newbase}/lib",
-           "BOOST_PREFIX=#{Formula["boost"].opt_prefix}",
-           "FMT_PREFIX=#{Formula["fmt"].opt_prefix}",
-           "JSONCPP_PREFIX=#{Formula["jsoncpp"].opt_prefix}",
-           "LIBCONFIG_PREFIX=#{Formula["libconfig"].opt_prefix}",
-           "MARIADB_PREFIX=#{Formula["mariadb-connector-c"].opt_prefix}",
-           "GDAL_PREFIX=#{Formula["gdal"].opt_prefix}",
-           "DC_PREFIX=#{Formula["double-conversion"].opt_prefix}",
-           "DATE_PREFIX=#{Formula["howard-hinnant-date"].opt_prefix}",
-           "OPENSSL_PREFIX=#{Formula["openssl@3"].opt_prefix}",
-           "PQXX_PREFIX=#{Formula["libpqxx"].opt_prefix}",
-           "PQ_PREFIX=#{Formula["libpq"].opt_prefix}"
+           "BOOST_PREFIX=#{formula_opt_prefix("boost")}",
+           "FMT_PREFIX=#{formula_opt_prefix("fmt")}",
+           "JSONCPP_PREFIX=#{formula_opt_prefix("jsoncpp")}",
+           "LIBCONFIG_PREFIX=#{formula_opt_prefix("libconfig")}",
+           "MARIADB_PREFIX=#{formula_opt_prefix("mariadb-connector-c")}",
+           "GDAL_PREFIX=#{formula_opt_prefix("gdal")}",
+           "DC_PREFIX=#{formula_opt_prefix("double-conversion")}",
+           "DATE_PREFIX=#{formula_opt_prefix("howard-hinnant-date")}",
+           "OPENSSL_PREFIX=#{formula_opt_prefix("openssl@3")}",
+           "PQXX_PREFIX=#{formula_opt_prefix("libpqxx")}",
+           "PQ_PREFIX=#{formula_opt_prefix("libpq")}"
 
     system "make", "-f", "Makefile.mac", "install", "PREFIX=#{prefix}"
   end
