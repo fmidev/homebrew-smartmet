@@ -1,0 +1,105 @@
+name: auto-update-kubetin
+
+# kubetin ships prebuilt release tarballs rather than being built from
+# source, so it can't ride along in auto-update-formulae.yml: that one
+# bumps a git `revision:` per formula, while this one has to swap the
+# release URLs and their sha256 checksums.
+#
+# Kept as its own workflow rather than a branch inside the existing one
+# so a failure here can't block the smartmet formula bumps, and vice
+# versa.
+
+on:
+  schedule:
+    - cron: '30 6 * * 1'  # Mondays, half an hour after auto-update-formulae
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check upstream release and update formula
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          file="Formula/kubetin.rb"
+
+          latest=$(gh release view --repo fmidev/kubetin --json tagName --jq .tagName)
+          if [[ -z "$latest" ]]; then
+            echo "::warning::could not resolve latest kubetin release — skipping"
+            exit 0
+          fi
+          # Version is scanned from the URL, so read it back the same way
+          # rather than from a `version` line the formula doesn't carry.
+          current=$(grep -oE 'download/v[0-9]+\.[0-9]+\.[0-9]+/' "$file" | head -1 | sed 's|download/||; s|/||')
+          if [[ "$current" == "$latest" ]]; then
+            echo "already at $latest"
+            exit 0
+          fi
+          echo "kubetin: $current -> $latest"
+
+          # One signed manifest for the whole release, so a tampered or
+          # half-uploaded asset can't slip through as a "new checksum".
+          sums=$(gh release download "$latest" --repo fmidev/kubetin --pattern SHA256SUMS --output - )
+
+          # Rewrite each arch block that the formula actually carries.
+          # Intel is absent until upstream ships a darwin-amd64 tarball;
+          # once the formula grows an on_intel block this picks it up
+          # with no further changes here.
+          for arch in darwin-arm64 darwin-amd64 linux-amd64 linux-arm64; do
+            tarball="kubetin-${latest}-${arch}.tar.gz"
+            # Match url lines only: prose in the formula mentions arch
+            # names too, and a comment must not make us demand a
+            # checksum for a tarball the formula never references.
+            grep -qE "url .*${arch}" "$file" || continue
+            sha=$(echo "$sums" | awk -v f="$tarball" '$2 == f { print $1 }')
+            if [[ -z "$sha" ]]; then
+              echo "::error::no checksum for $tarball in the release manifest"
+              exit 1
+            fi
+            # Replace the sha256 on the line following this arch's url.
+            awk -v arch="$arch" -v sha="$sha" '
+              $0 ~ arch && /url / { print; getline; sub(/sha256 "[0-9a-f]*"/, "sha256 \"" sha "\""); print; next }
+              { print }
+            ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+          done
+
+          # Bump every release path in one pass, after the checksums are
+          # in — doing it first would break the arch/url matching above.
+          sed -i "s|download/${current}/|download/${latest}/|g; s|kubetin-${current}-|kubetin-${latest}-|g" "$file"
+
+          {
+            echo "changed=true"
+            echo "version=${latest#v}"
+            echo "tag=${latest}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open bump PR
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          branch="auto-update/kubetin-${{ steps.bump.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add Formula/kubetin.rb
+          git commit -m "kubetin ${{ steps.bump.outputs.version }}"
+          git push -u origin "$branch"
+          gh pr create \
+            --title "kubetin ${{ steps.bump.outputs.version }}" \
+            --body "Automated bump to [${{ steps.bump.outputs.tag }}](https://github.com/fmidev/kubetin/releases/tag/${{ steps.bump.outputs.tag }}).
+
+          Checksums taken from that release's \`SHA256SUMS\` manifest.
+
+          No bottle needed — the formula installs upstream's prebuilt binary, so \`brew test-bot\` on this PR is the whole verification." \
+            --base main
