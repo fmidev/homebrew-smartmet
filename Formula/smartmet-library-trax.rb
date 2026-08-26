@@ -22,15 +22,15 @@ class SmartmetLibraryTrax < Formula
     tap_patches = Tap.fetch("fmidev/smartmet").path/"patches"
     cp "#{tap_patches}/trax.Makefile.mac", "Makefile.mac"
 
-    macgyver = Formula["fmidev/smartmet/smartmet-library-macgyver"].opt_prefix
+    macgyver = formula_opt_prefix("fmidev/smartmet/smartmet-library-macgyver")
 
     system "make", "-f", "Makefile.mac", "-j#{ENV.make_jobs}",
            "PREFIX=#{prefix}",
            "MACGYVER_INC=#{macgyver}/include", "MACGYVER_LIB=#{macgyver}/lib",
-           "BOOST_PREFIX=#{Formula["boost"].opt_prefix}",
-           "FMT_PREFIX=#{Formula["fmt"].opt_prefix}",
-           "GDAL_PREFIX=#{Formula["gdal"].opt_prefix}",
-           "GEOS_PREFIX=#{Formula["geos"].opt_prefix}"
+           "BOOST_PREFIX=#{formula_opt_prefix("boost")}",
+           "FMT_PREFIX=#{formula_opt_prefix("fmt")}",
+           "GDAL_PREFIX=#{formula_opt_prefix("gdal")}",
+           "GEOS_PREFIX=#{formula_opt_prefix("geos")}"
 
     system "make", "-f", "Makefile.mac", "install", "PREFIX=#{prefix}"
   end
