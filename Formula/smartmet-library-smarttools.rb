@@ -3,8 +3,8 @@ class SmartmetLibrarySmarttools < Formula
   desc "FMI smartmet — interpreter and helper utilities for newbase data"
   homepage "https://github.com/fmidev/smartmet-library-smarttools"
   url "https://github.com/fmidev/smartmet-library-smarttools.git",
-      revision: "04aeeb29917b76e497ba8e0cc5feed991405b951"
-  version "2026.05.10"
+      revision: "188d646e0129c8a810a4b92cd41cecd2e6d62e3b"
+  version "2026.09.07"
   license "MIT"
 
   bottle do
