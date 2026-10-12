@@ -3,8 +3,8 @@ class SmartmetLibraryCalculator < Formula
   desc "FMI smartmet — weather analysis calculator framework"
   homepage "https://github.com/fmidev/smartmet-library-calculator"
   url "https://github.com/fmidev/smartmet-library-calculator.git",
-      revision: "10a00b5f5019876a794731b9bc2c4dceb94eb65c"
-  version "2026.05.10"
+      revision: "0ad45b21fb6f1ef2b1aae5493ae30802716fea63"
+  version "2026.10.12"
   license "MIT"
 
   bottle do
