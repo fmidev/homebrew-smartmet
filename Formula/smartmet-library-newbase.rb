@@ -3,8 +3,8 @@ class SmartmetLibraryNewbase < Formula
   desc "FMI smartmet — querydata, projections, and core data structures"
   homepage "https://github.com/fmidev/smartmet-library-newbase"
   url "https://github.com/fmidev/smartmet-library-newbase.git",
-      revision: "574bd90bc526ec0b4e8d41b3d87a910eff4c7edf"
-  version "2026.05.10"
+      revision: "f80ef477e9765e47f04cd89e2d2eb086c5365e0b"
+  version "2026.11.09"
   license "MIT"
 
   bottle do
