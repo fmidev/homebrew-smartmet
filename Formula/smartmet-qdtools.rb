@@ -3,8 +3,8 @@ class SmartmetQdtools < Formula
   desc "FMI smartmet — command-line tools for querydata, GRIB, NetCDF, HDF5"
   homepage "https://github.com/fmidev/smartmet-qdtools"
   url "https://github.com/fmidev/smartmet-qdtools.git",
-      revision: "48b37c0c5e4e27781efe8f822e619ae1f5bf6231"
-  version "2026.05.27"
+      revision: "237756be012ef5be4a5f8ae7b09c8639f052c6f2"
+  version "2026.11.09"
   license "MIT"
   # revision 1: qdtools-macos.patch now fixes Hdf5File.cpp + NcFileExtended.cpp
   # for GDAL 3.13 (GetMetadata returns CSLConstList, not char**). Source

@@ -3,8 +3,8 @@ class SmartmetLibraryImagine < Formula
   desc "FMI smartmet — image generation and rendering"
   homepage "https://github.com/fmidev/smartmet-library-imagine"
   url "https://github.com/fmidev/smartmet-library-imagine.git",
-      revision: "2800acf4aafeabf3b63098d55438c7df8144a22d"
-  version "2026.05.10"
+      revision: "484d0f095ceafe62d18732f6c8e6fcc85fa734f4"
+  version "2026.11.09"
   license "MIT"
 
   bottle do
